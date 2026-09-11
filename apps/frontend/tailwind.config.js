@@ -7,11 +7,13 @@ export default {
       colors: {
         background: '#f7f7f5',
         surface: {
+          DEFAULT: '#141414',
           dark: '#0e0e0e',
           elevated: '#18181b',
           light: '#ffffff'
         },
         border: {
+          DEFAULT: '#27272a',
           light: '#e5e5e0',
           dark: '#27272a'
         },
