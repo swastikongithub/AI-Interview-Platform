@@ -1,0 +1,15 @@
+-- AI Interview Platform — 0003_fix_users_role_escalation.sql
+-- Security fix: the original "Users can update own row" policy on public.users had no
+-- WITH CHECK clause restricting which columns may change. Because Postgres reuses the
+-- USING clause as the WITH CHECK for UPDATE when none is given, the policy only verified
+-- WHICH row was targeted (auth.uid() = id), never WHAT changed. Combined with the blanket
+-- GRANT ALL ... TO authenticated in 0001, this allowed any signed-in user to call the
+-- Supabase REST API directly (their own session + the public anon key) and set their own
+-- `role` column to 'admin', bypassing the backend entirely.
+--
+-- There is no legitimate product flow that requires a user to self-update public.users
+-- (role changes are an admin-only action performed by the backend via the service-role
+-- client, and email is managed by Supabase Auth, not this table). Removing the policy
+-- closes the hole; admins retain full access via the existing "Admins have full access
+-- to users" policy.
+DROP POLICY IF EXISTS "Users can update own row" ON public.users;

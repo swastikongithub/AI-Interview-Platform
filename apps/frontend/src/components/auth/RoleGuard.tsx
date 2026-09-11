@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import { DEMO_ACCOUNTS_ENABLED } from '../../config';
 import { ShieldAlert, RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface RoleGuardProps {
@@ -70,20 +71,22 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) 
             </p>
           </div>
 
-          <div className="pt-4 border-t border-border">
-            <p className="text-xs text-slate-400 mb-3">Quick Demo Account Switcher:</p>
-            <div className="grid grid-cols-2 gap-2">
-              {allowedRoles.map((targetRole) => (
-                <button
-                  key={targetRole}
-                  onClick={() => demoSwitchRole(targetRole)}
-                  className="px-4 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs transition-all shadow-md hover:scale-105"
-                >
-                  Switch to {targetRole}
-                </button>
-              ))}
+          {DEMO_ACCOUNTS_ENABLED && (
+            <div className="pt-4 border-t border-border">
+              <p className="text-xs text-slate-400 mb-3">Quick Demo Account Switcher:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {allowedRoles.map((targetRole) => (
+                  <button
+                    key={targetRole}
+                    onClick={() => demoSwitchRole(targetRole)}
+                    className="px-4 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs transition-all shadow-md hover:scale-105"
+                  >
+                    Switch to {targetRole}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     );

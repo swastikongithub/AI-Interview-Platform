@@ -112,4 +112,14 @@ describe('Candidate Profile CRUD & Role Guard Endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.body.user_id).toBe('11111111-1111-4111-8111-111111111111');
   });
+
+  // IDOR regression test: a candidate must not be able to read another user's
+  // profile by guessing/enumerating their userId.
+  it('GET /api/v1/profiles/:userId should return 403 when a candidate requests a profile that is not their own', async () => {
+    const res = await request(app)
+      .get('/api/v1/profiles/22222222-2222-4222-8222-222222222222')
+      .set('Authorization', candidateToken);
+
+    expect(res.status).toBe(403);
+  });
 });

@@ -179,8 +179,6 @@ ${resumeText}
 
             const text = res.text || '{}';
             rawJson = JSON.parse(text);
-            console.log('--- DEBUG RAW JSON ---');
-            console.log(JSON.stringify(rawJson, null, 2));
           } else {
             throw new Error('FATAL: Real GEMINI_API_KEY is required for Gemini processing. Mock fallback is disabled.');
           }

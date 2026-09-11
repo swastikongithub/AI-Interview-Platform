@@ -68,7 +68,11 @@ export class ResumeQueueService {
         throw new Error('FATAL: BullMQ queue is not initialized.');
     }
 
-    const jobId = `resume-${hash}`;
+    // Scope the deterministic job ID to the user: two different users uploading
+    // byte-identical files (e.g. the same template resume) must not collide onto
+    // the same BullMQ job, which would silently strand one user's profile in
+    // 'processing' forever since only the winning enqueue's userId gets processed.
+    const jobId = `resume-${userId}-${hash}`;
     await this.queue.add('process-resume', jobData, {
       jobId,
       removeOnComplete: true,

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import { DEMO_ACCOUNTS_ENABLED } from '../../config';
 import {
   Sparkles,
   User,
@@ -90,6 +91,7 @@ export const Navbar: React.FC = () => {
         {/* Right side: Role Switcher & User info */}
         <div className="flex items-center gap-4">
           {/* Demo Role Switcher Dropdown */}
+          {DEMO_ACCOUNTS_ENABLED && (
           <div className="relative">
             <button
               onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
@@ -138,6 +140,7 @@ export const Navbar: React.FC = () => {
               </div>
             )}
           </div>
+          )}
 
           {/* User badge */}
           <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-border">

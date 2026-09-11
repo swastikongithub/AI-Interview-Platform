@@ -27,8 +27,9 @@ export const apiService = {
     return res.data;
   },
 
-  async updateUserRole(role: UserRole): Promise<{ user: User }> {
-    const res = await api.put('/auth/role', { role });
+  // Admin-only: assign a role to another user's account.
+  async updateUserRole(userId: string, role: UserRole): Promise<{ user: User }> {
+    const res = await api.put('/auth/role', { userId, role });
     return res.data;
   },
 

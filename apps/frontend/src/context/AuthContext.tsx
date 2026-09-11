@@ -16,7 +16,8 @@ interface AuthContextType {
   status: AuthState;
   isLoading: boolean;
   demoSwitchRole: (role: UserRole) => Promise<void>;
-  updateUserRole: (role: UserRole) => Promise<void>;
+  /** Admin-only: assign a role to another user's account. */
+  updateUserRole: (userId: string, role: UserRole) => Promise<void>;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -116,8 +117,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await queryClient.invalidateQueries({ queryKey: ['authMe'] });
   };
 
-  const updateUserRole = async (targetRole: UserRole) => {
-    await apiService.updateUserRole(targetRole);
+  const updateUserRole = async (userId: string, targetRole: UserRole) => {
+    await apiService.updateUserRole(userId, targetRole);
     await queryClient.invalidateQueries({ queryKey: ['authMe'] });
   };
 

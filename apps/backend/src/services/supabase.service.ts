@@ -114,8 +114,9 @@ export class SupabaseService {
       throw new Error('FATAL: Real Supabase connection is required. Mock fallback is disabled.');
     }
     
-    const ext = originalName.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${ext}`;
+    // Only PDFs are ever accepted upstream (multer fileFilter enforces this); never derive
+    // the storage key extension from the client-supplied filename.
+    const fileName = `${userId}/${Date.now()}.pdf`;
     
     const { error } = await supabase.storage
       .from('resumes')

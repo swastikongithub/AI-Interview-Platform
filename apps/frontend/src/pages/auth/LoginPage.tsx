@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { DEMO_ACCOUNTS_LIST } from '../../config/demoAccounts';
+import { DEMO_ACCOUNTS_ENABLED } from '../../config';
 import { supabase } from '../../services/supabase';
 import { Sparkles, User, Briefcase, Users, ShieldCheck, LogIn, AlertCircle } from 'lucide-react';
 import { UserRole } from '../../types';
@@ -91,44 +92,48 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          <div className="mb-6">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              1-Click Demo Accounts (Local / Dev)
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {DEMO_ACCOUNTS_LIST.map((acc) => {
-                const Icon = roleIcons[acc.role] || User;
-                return (
-                  <button
-                    key={acc.role}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleDemoLogin(acc.role)}
-                    className="flex items-center gap-3 p-3 rounded-2xl bg-surface-elevated/80 border border-border hover:border-accent/50 hover:bg-surface-elevated text-left transition-all duration-200 group disabled:opacity-50"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent group-hover:scale-105 transition-transform">
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-white capitalize">{acc.role}</p>
-                      <p className="text-[10px] text-slate-400 truncate max-w-[90px]">
-                        {acc.email.split('@')[0]}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {DEMO_ACCOUNTS_ENABLED && (
+            <>
+              <div className="mb-6">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                  1-Click Demo Accounts (Local / Dev)
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {DEMO_ACCOUNTS_LIST.map((acc) => {
+                    const Icon = roleIcons[acc.role] || User;
+                    return (
+                      <button
+                        key={acc.role}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleDemoLogin(acc.role)}
+                        className="flex items-center gap-3 p-3 rounded-2xl bg-surface-elevated/80 border border-border hover:border-accent/50 hover:bg-surface-elevated text-left transition-all duration-200 group disabled:opacity-50"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent group-hover:scale-105 transition-transform">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white capitalize">{acc.role}</p>
+                          <p className="text-[10px] text-slate-400 truncate max-w-[90px]">
+                            {acc.email.split('@')[0]}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-surface px-2 text-slate-400">Or continue with credentials</span>
-            </div>
-          </div>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-surface px-2 text-slate-400">Or continue with credentials</span>
+                </div>
+              </div>
+            </>
+          )}
 
           <form className="space-y-4" onSubmit={handleEmailPasswordLogin}>
             <div>
