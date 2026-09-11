@@ -1,0 +1,51 @@
+version: '3.8'
+
+# NOTE: PostgreSQL database, GoTrue Auth, Studio, and Kong API Gateway are now managed
+# by the official Supabase CLI local dev stack (`npx supabase start`).
+# This docker-compose stack starts Frontend (3000), Backend API (4000), and Redis (6379),
+# and connects to the local Supabase stack running on the host via `host.docker.internal:54321`.
+# For a single-command zero-to-running development environment, run:
+#   - Windows: .\scripts\dev.ps1
+#   - Linux/macOS: ./scripts/dev.sh
+
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:4000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "4000:4000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SUPABASE_ENV=local
+      - SUPABASE_URL=http://host.docker.internal:54321
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI2MDAsImV4cCI6MTk2MDc2ODYwMH0.51o_a-M92m2K6Goxe-u_t5-e6F-w9824nZ-t-o-t_vQ
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY0NTE5MjYwMCwiZXhwIjoxOTYwNzY4NjAwfQ.6_rL_wzL3y6d8L1oQ6x3p9_z4_Q9k_f7-0o_v2z_2-0
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

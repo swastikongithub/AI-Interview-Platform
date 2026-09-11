@@ -1,0 +1,17 @@
+FROM node:20-alpine AS build
+
+WORKDIR /app
+COPY package*.json ./
+COPY packages/shared/package*.json ./packages/shared/
+COPY apps/backend/package*.json ./apps/backend/
+
+RUN npm install
+
+COPY packages/shared ./packages/shared
+COPY apps/backend ./apps/backend
+
+RUN npm run build --workspace=@antigravity/shared
+RUN npm run build --workspace=ai-interview-platform-backend
+
+EXPOSE 4000
+CMD ["npm", "run", "start", "--workspace=ai-interview-platform-backend"]

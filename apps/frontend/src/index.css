@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-text-primary font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-glass text-text-inverted backdrop-blur-md rounded-card-lg transition-all duration-200;
+  }
+
+  .glass-card-hover {
+    @apply glass-card hover:-translate-y-1 hover:scale-[1.02] shadow-glow;
+  }
+}
+
