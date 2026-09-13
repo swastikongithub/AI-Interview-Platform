@@ -10,13 +10,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, children, disabled, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-pill transition-all outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100';
+    const baseStyles = 'inline-flex items-center justify-center font-sans rounded-sm transition-all outline-none focus-visible:ring-1 focus-visible:ring-ink focus-visible:ring-offset-1 focus-visible:ring-offset-paper disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100';
     
     const variants = {
-      primary: 'bg-surface-dark text-text-inverted hover:bg-surface-elevated',
-      secondary: 'bg-border-light text-text-primary hover:bg-border-dark hover:text-text-inverted',
-      accent: 'bg-accent text-white hover:bg-accent-hover',
-      ghost: 'bg-transparent text-text-primary hover:bg-border-light',
+      primary: 'bg-ink text-paper hover:opacity-90',
+      secondary: 'bg-transparent text-ink border border-line hover:bg-paper-raised',
+      accent: 'bg-accent text-white hover:opacity-90',
+      ghost: 'bg-transparent text-ink-muted hover:text-ink hover:bg-paper-pressed/50',
     };
 
     const sizes = {

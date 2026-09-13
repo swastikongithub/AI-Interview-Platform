@@ -9,7 +9,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ className, ...pr
   return (
     <div
       className={cn(
-        'animate-pulse bg-surface-elevated/10 rounded-card-md',
+        'animate-pulse bg-paper-raised/50 rounded-md',
         className
       )}
       {...props}

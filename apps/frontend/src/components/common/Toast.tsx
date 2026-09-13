@@ -56,8 +56,8 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 const ToastItem: React.FC<{ toast: ToastMessage; onClose: () => void }> = ({ toast, onClose }) => {
   const icons = {
-    success: <CheckCircle className="w-5 h-5 text-success" />,
-    error: <AlertCircle className="w-5 h-5 text-danger" />,
+    success: <CheckCircle className="w-5 h-5 text-good" />,
+    error: <AlertCircle className="w-5 h-5 text-critical" />,
     info: <Info className="w-5 h-5 text-accent" />,
     warning: <AlertTriangle className="w-5 h-5 text-warning" />,
   };
@@ -65,19 +65,19 @@ const ToastItem: React.FC<{ toast: ToastMessage; onClose: () => void }> = ({ toa
   return (
     <div
       className={cn(
-        'pointer-events-auto flex items-start gap-3 w-80 bg-surface-light border border-border-light shadow-md rounded-card-md p-4',
+        'pointer-events-auto flex items-start gap-3 w-80 bg-paper border border-line shadow-md rounded-md p-4',
         'transition-all duration-200 ease-out'
       )}
       role="alert"
     >
       <div className="shrink-0 mt-0.5">{icons[toast.type]}</div>
       <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-semibold text-text-primary">{toast.title}</h4>
-        {toast.message && <p className="text-sm text-text-muted mt-1">{toast.message}</p>}
+        <h4 className="text-sm font-semibold text-ink">{toast.title}</h4>
+        {toast.message && <p className="text-sm text-ink-muted mt-1">{toast.message}</p>}
       </div>
       <button
         onClick={onClose}
-        className="shrink-0 p-1 text-text-tertiary hover:text-text-primary hover:bg-surface-elevated/5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="shrink-0 p-1 text-ink-faint hover:text-ink hover:bg-paper-raised/5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-label="Close notification"
       >
         <X className="w-4 h-4" />

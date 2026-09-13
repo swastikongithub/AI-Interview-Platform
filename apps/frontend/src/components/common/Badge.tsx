@@ -14,18 +14,18 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const variants = {
-    default: 'bg-surface-elevated text-text-primary border border-border-light',
-    success: 'bg-success/10 text-success border border-success/20',
+    default: 'bg-paper-raised text-ink border border-line',
+    success: 'bg-good/10 text-good border border-good/20',
     warning: 'bg-warning/10 text-warning border border-warning/20',
-    danger: 'bg-danger/10 text-danger border border-danger/20',
-    accent: 'bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 transition-colors',
-    outline: 'bg-transparent text-text-muted border border-border-dark',
+    danger: 'bg-critical/10 text-critical border border-critical/20',
+    accent: 'bg-accent/10 text-accent border border-accent/20',
+    outline: 'bg-transparent text-ink-faint border border-line',
   };
 
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2.5 py-0.5 rounded-pill text-xs font-medium tracking-wide uppercase',
+        'inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-mono font-medium uppercase tracking-widest',
         variants[variant],
         className
       )}

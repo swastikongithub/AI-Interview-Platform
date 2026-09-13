@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.routes';
 import profileRoutes from './routes/profile.routes';
 import resumeRoutes from './routes/resume.routes';
 import jobsRoutes from './routes/jobs.routes';
+import interviewsRoutes from './routes/interviews.routes';
 import config from './config';
 import { logger } from './utils/logger';
 import { requestIdMiddleware } from './middleware/requestId';
@@ -106,6 +107,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/profiles', profileRoutes);
 app.use('/api/v1/resume', resumeRoutes);
 app.use('/api/v1/jobs', jobsRoutes);
+app.use('/api/v1/interviews', interviewsRoutes);
 
 
 if (config.env !== 'production') {

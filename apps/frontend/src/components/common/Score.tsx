@@ -8,15 +8,15 @@ export interface ScoreProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const getScoreColor = (score: number) => {
-  if (score >= 80) return 'text-success';
+  if (score >= 80) return 'text-good';
   if (score >= 50) return 'text-warning';
-  return 'text-danger';
+  return 'text-critical';
 };
 
 const getScoreBg = (score: number) => {
-  if (score >= 80) return 'bg-success/10';
-  if (score >= 50) return 'bg-warning/10';
-  return 'bg-danger/10';
+  if (score >= 80) return 'bg-good/10 border-good/20';
+  if (score >= 50) return 'bg-warning/10 border-warning/20';
+  return 'bg-critical/10 border-critical/20';
 };
 
 export const Score: React.FC<ScoreProps> = ({ 
@@ -32,10 +32,10 @@ export const Score: React.FC<ScoreProps> = ({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center font-display font-semibold transition-all duration-200',
+        'flex flex-col items-center justify-center font-sans border transition-all duration-200',
         bgClass,
         colorClass,
-        isCard ? 'rounded-card-lg p-6 min-w-[140px]' : 'rounded-pill px-3 py-1 text-sm inline-flex flex-row gap-1.5 min-w-fit items-center',
+        isCard ? 'rounded-md p-6 min-w-[140px]' : 'rounded-sm px-2 py-0.5 text-sm inline-flex flex-row gap-1.5 min-w-fit items-center',
         className
       )}
       {...props}
@@ -45,14 +45,13 @@ export const Score: React.FC<ScoreProps> = ({
       aria-valuemax={100}
       aria-label={`Score: ${score} out of 100`}
     >
-      <span className={cn(isCard ? 'text-5xl tracking-tight' : 'text-base font-bold leading-none')}>
+      <span className={cn(isCard ? 'text-5xl font-serif' : 'text-base font-bold leading-none')}>
         {score}
       </span>
-      {isCard && <span className="text-sm font-medium mt-1 opacity-80 uppercase tracking-wide text-text-primary">Score</span>}
+      {isCard && <span className="text-xs font-mono mt-1 uppercase tracking-widest opacity-80 text-ink">Score</span>}
     </div>
   );
 };
 
-// Explicit exports to satisfy the requirement "ScoreCard & ScoreChip"
 export const ScoreCard = (props: Omit<ScoreProps, 'variant'>) => <Score variant="card" {...props} />;
 export const ScoreChip = (props: Omit<ScoreProps, 'variant'>) => <Score variant="chip" {...props} />;

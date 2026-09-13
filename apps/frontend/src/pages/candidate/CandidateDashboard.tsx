@@ -1,169 +1,139 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import {
-  Sparkles,
-  User,
-  Award,
-  Code2,
-  Calendar,
-  ArrowRight,
-  CheckCircle2,
-  TrendingUp,
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { PageTransition } from '../../motion/PageTransition';
+import { Reveal } from '../../motion/Reveal';
+import { MaskedTextReveal } from '../../motion/MaskedTextReveal';
+import { Parallax } from '../../motion/Parallax';
+import { ImageReveal } from '../../motion/ImageReveal';
+import { ScrollProgress } from '../../motion/ScrollProgress';
+import { Badge } from '../../components/common/Badge';
 
 export const CandidateDashboard: React.FC = () => {
   const { profile, user } = useAuth();
 
   const skillsCount = profile?.skills?.length || 0;
   const isProfileComplete = Boolean(
-    profile?.name && profile?.skills?.length > 0 && profile?.education?.length > 0
+    profile?.name && (profile?.skills?.length ?? 0) > 0 && (profile?.education?.length ?? 0) > 0
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-surface border border-border p-8 md:p-10 shadow-2xl">
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-surface-elevated border border-border text-accent text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Candidate Portal • Phase 0 Foundation</span>
-            </div>
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white">
-              Welcome back,{' '}
-              <span className="gradient-text">{profile?.name || user?.email?.split('@')[0]}</span>
-            </h1>
-            <p className="text-slate-300 text-sm max-w-xl">
-              Prepare for technical interviews, practice coding challenges against Judge0, and track your ATS match scores.
+    <PageTransition className="font-sans min-h-screen pb-32">
+      <ScrollProgress />
+      
+      {/* Cinematic Hero Section */}
+      <section className="relative px-6 md:px-12 pt-32 pb-24 max-w-[1400px] mx-auto border-b border-line">
+        <Parallax offset={40} className="max-w-4xl">
+          <span className="font-mono text-[10px] tracking-widest uppercase text-accent border-b border-line pb-1 mb-8 inline-block">
+            Candidate Portal
+          </span>
+          <h1 className="text-5xl md:text-7xl font-serif text-ink tracking-tight mb-8">
+            <MaskedTextReveal text={`Welcome back, ${profile?.name || user?.email?.split('@')[0] || 'Candidate'}.`} delay={0.1} />
+          </h1>
+          <Reveal delay={0.6} y={20}>
+            <p className="text-xl md:text-2xl text-ink-muted font-sans font-light leading-relaxed max-w-2xl">
+              Prepare for technical interviews, practice your communication skills, and track your analytical ATS capabilities.
             </p>
-          </div>
+          </Reveal>
+        </Parallax>
+      </section>
 
-          <Link
-            to="/candidate/profile"
-            className="inline-flex items-center gap-3 px-6 py-3.5 rounded-full bg-surface-elevated hover:bg-accent hover:text-white text-white font-semibold text-sm border border-border transition-all duration-200 hover:scale-[1.02] shadow-lg group"
-          >
-            <div className="w-6 h-6 rounded-full bg-white text-surface flex items-center justify-center group-hover:bg-white group-hover:text-accent transition-colors">
-              <User className="w-3.5 h-3.5" />
-            </div>
-            <span>Manage My Profile</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </div>
+      <section className="max-w-[1400px] mx-auto px-6 md:px-12 pt-24">
+        <div className="flex flex-col lg:flex-row gap-16 md:gap-24">
+          
+          {/* Identity & Status Column (Left) */}
+          <aside className="lg:w-1/3 lg:sticky lg:top-24 self-start space-y-16">
+            <Reveal delay={0.7} y={30} className="space-y-12">
+              {/* ATS Score Preview */}
+              <div className="space-y-4">
+                <h3 className="font-mono text-xs uppercase tracking-widest text-ink-faint border-b border-line pb-2">
+                  Analytical Baseline
+                </h3>
+                <div className="flex items-end gap-3 pt-2">
+                  <span className="text-6xl font-serif text-ink tracking-tight leading-none">{profile?.ats_score || 85}</span>
+                  <span className="text-sm font-sans text-ink-muted mb-1 uppercase tracking-widest font-mono">/ 100 ATS</span>
+                </div>
+              </div>
 
-      {/* Grid of Widgets */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Profile Completeness Card */}
-        <div className="glass-card p-6 flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center text-accent shadow-inner">
-              <User className="w-6 h-6" />
-            </div>
-            {isProfileComplete ? (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Complete
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold">
-                Incomplete
-              </span>
-            )}
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">Candidate Profile</h3>
-            <p className="text-xs text-slate-400 mt-1">
-              {skillsCount} verified technical skills added. Education & experience records active.
-            </p>
-          </div>
-          <Link
-            to="/candidate/profile"
-            className="text-xs font-semibold text-accent hover:text-accent-hover flex items-center gap-1.5 mt-2 transition-colors"
-          >
-            <span>Edit profile & skills</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+              {/* Completeness */}
+              <div className="space-y-4">
+                <h3 className="font-mono text-xs uppercase tracking-widest text-ink-faint border-b border-line pb-2">
+                  Dossier Status
+                </h3>
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm font-sans text-ink">{skillsCount} Verified Skills</span>
+                  <Badge variant={isProfileComplete ? 'success' : 'warning'}>
+                    {isProfileComplete ? 'Complete' : 'Incomplete'}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="pt-4 border-t border-line">
+                <Link
+                  to="/candidate/profile"
+                  className="inline-flex items-center gap-3 text-xs font-mono uppercase tracking-widest text-accent hover:text-ink transition-colors group"
+                >
+                  <span>Access Dossier</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            </Reveal>
+          </aside>
 
-        {/* ATS Score Preview Card */}
-        <div className="glass-card p-6 flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center text-accent shadow-inner">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-bold text-slate-400">Phase 1 Preview</span>
-          </div>
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-white">
-                {profile?.ats_score || 85}
-              </span>
-              <span className="text-xs text-slate-400">/ 100 ATS Score</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Baseline profile strength rating. Resume PDF upload and Gemini keyword analysis unlock in Phase 1.
-            </p>
-          </div>
-          <div className="w-full bg-surface-elevated border border-border rounded-full h-2.5 overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-accent via-amber-400 to-accent-hover h-full rounded-full"
-              style={{ width: `${profile?.ats_score || 85}%` }}
-            />
-          </div>
-        </div>
+          {/* Activity & Content Column (Right) */}
+          <main className="lg:w-2/3 space-y-32">
+            
+            {/* Upcoming Interviews */}
+            <Reveal delay={0.8} y={40} className="space-y-8">
+              <div className="flex flex-col gap-2 border-b border-line pb-6">
+                <span className="font-mono text-[10px] text-accent uppercase tracking-widest">Live Execution</span>
+                <h2 className="text-4xl font-serif text-ink">Scheduled Activity</h2>
+              </div>
+              
+              <div className="py-20 border border-line bg-paper-raised relative overflow-hidden group flex flex-col items-center justify-center text-center">
+                {/* Subtle cinematic background abstract */}
+                <div className="absolute inset-0 bg-gradient-to-br from-paper via-paper-raised to-paper-pressed opacity-50 transition-opacity group-hover:opacity-80" />
+                <div className="relative z-10 space-y-4 px-6">
+                  <p className="text-2xl font-serif text-ink">No active schedules</p>
+                  <p className="text-sm font-sans text-ink-muted max-w-sm mx-auto leading-relaxed">
+                    When you apply to jobs or start an AI practice interview, your scheduled evaluation sessions will be indexed here.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
 
-        {/* Coding & Interviews Card */}
-        <div className="glass-card p-6 flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center text-accent shadow-inner">
-              <Code2 className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-bold text-slate-400">Phase 2 & 3</span>
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">Practice & Mock Interviews</h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Adaptive AI text interviews & Judge0 coding sandbox are scheduled for upcoming increments.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 pt-2">
-            <span className="text-[11px] px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-slate-300 font-semibold">
-              0 Active Submissions
-            </span>
-            <span className="text-[11px] px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-slate-300 font-semibold">
-              0 Scheduled
-            </span>
-          </div>
-        </div>
-      </div>
+            {/* Active Practice */}
+            <Reveal delay={0.9} y={40} className="space-y-8">
+              <div className="flex flex-col gap-2 border-b border-line pb-6">
+                <span className="font-mono text-[10px] text-accent uppercase tracking-widest">Asynchronous Sandbox</span>
+                <h2 className="text-4xl font-serif text-ink">Technical Practice</h2>
+              </div>
 
-      {/* Upcoming Interviews & Activity Section */}
-      <div className="glass-card p-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
-              <Calendar className="w-5 h-5 text-accent" />
-              <span>Upcoming Interviews & Activity</span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              No live or mock interviews scheduled yet.
-            </p>
-          </div>
-        </div>
+              <div className="grid grid-cols-1 gap-8">
+                <Link
+                  to="/candidate/interviews"
+                  className="p-8 border border-line bg-paper-raised hover:bg-paper-pressed transition-colors space-y-6 flex flex-col justify-between min-h-[240px] group"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-mono text-xs text-ink-faint uppercase tracking-widest mb-3 block border-b border-line pb-2 inline-block">Adaptive Text</span>
+                      <p className="text-sm text-ink-muted font-sans leading-relaxed">Behavioral & Technical interview preparation.</p>
+                    </div>
+                    <ArrowRight className="w-6 h-6 text-accent group-hover:translate-x-2 transition-transform" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-serif text-ink tracking-tight mb-2 group-hover:text-accent transition-colors">Access Interview Dossier</p>
+                    <p className="text-xs font-mono uppercase tracking-widest text-ink-faint">View all your sessions</p>
+                  </div>
+                </Link>
+              </div>
+            </Reveal>
 
-        <div className="border border-dashed border-border rounded-3xl p-10 text-center space-y-3 bg-surface/40">
-          <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center text-text-muted mx-auto shadow-inner">
-            <Award className="w-6 h-6" />
-          </div>
-          <p className="text-sm font-semibold text-white">
-            You have no upcoming scheduled interviews
-          </p>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            When you apply to jobs or start an AI practice interview in Phase 2, your scheduled sessions will appear here.
-          </p>
+          </main>
+
         </div>
-      </div>
-    </div>
+      </section>
+    </PageTransition>
   );
 };
-

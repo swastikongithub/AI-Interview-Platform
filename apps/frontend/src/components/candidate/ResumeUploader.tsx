@@ -2,6 +2,10 @@ import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { ATSReport } from '../../types';
+import { Reveal } from '../../motion/Reveal';
+import { MaskedTextReveal } from '../../motion/MaskedTextReveal';
+import { SectionTransition } from '../../motion/SectionTransition';
+import { UploadCloud, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface ResumeUploaderProps {
   onProfileUpdated?: () => void;
@@ -13,8 +17,7 @@ export const ResumeUploader: React.FC<ResumeUploaderProps> = ({ onProfileUpdated
   const [dragActive, setDragActive] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Poll resume status while processing
-  const { data: statusData, isLoading: isStatusLoading } = useQuery({
+  const { data: statusData } = useQuery({
     queryKey: ['resumeStatus'],
     queryFn: () => apiService.getResumeStatus(),
     refetchInterval: (query) => {
@@ -25,17 +28,16 @@ export const ResumeUploader: React.FC<ResumeUploaderProps> = ({ onProfileUpdated
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => apiService.uploadResume(file),
-    onSuccess: (data) => {
+    onSuccess: () => {
       setUploadError(null);
       queryClient.invalidateQueries({ queryKey: ['resumeStatus'] });
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
-      if (onProfileUpdated) {
-        onProfileUpdated();
-      }
+      if (onProfileUpdated) onProfileUpdated();
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
+      const error = err as any;
       setUploadError(
-        err?.response?.data?.error || err.message || 'Failed to upload PDF resume file'
+        error?.response?.data?.error || error.message || 'Failed to upload PDF resume file'
       );
     },
   });
@@ -52,187 +54,156 @@ export const ResumeUploader: React.FC<ResumeUploaderProps> = ({ onProfileUpdated
     }
   };
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type !== 'application/pdf') {
-        setUploadError('Please select a valid PDF file (.pdf)');
-        return;
-      }
-      uploadMutation.mutate(file);
-    }
-  };
-
   const currentStatus = statusData?.resume_status || 'none';
   const atsReport: ATSReport | null = statusData?.ats_report || null;
 
   return (
-    <div className="bg-editorial-card border border-editorial-border rounded-editorial-lg p-6 shadow-editorial-card transition-all duration-200">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-xl font-outfit font-bold text-editorial-text-primary">
-            AI Resume Analyzer & Auto-Fill
-          </h3>
-          <p className="text-sm font-inter text-editorial-text-secondary mt-1">
-            Upload your PDF resume to auto-populate your profile and receive an instant ATS compatibility breakdown.
+    <div className="space-y-16">
+      <div className="border-b border-line pb-6">
+        <h2 className="text-4xl font-serif text-ink tracking-tight mb-2">
+          <MaskedTextReveal text="ATS Telemetry" delay={0.2} />
+        </h2>
+        <Reveal delay={0.4}>
+          <p className="text-lg font-sans text-ink-muted font-light">
+            Upload your document for analytical breakdown and automated dossier population.
           </p>
-        </div>
-        {currentStatus === 'complete' && atsReport && (
-          <div className="flex items-center gap-2 bg-editorial-accent-amber/10 border border-editorial-accent-amber/30 px-4 py-2 rounded-editorial-pill">
-            <span className="text-xs font-inter uppercase tracking-wider text-editorial-accent-amber font-semibold">
-              ATS Score
-            </span>
-            <span className="text-lg font-outfit font-bold text-editorial-accent-amber">
-              {atsReport.score}/100
-            </span>
-          </div>
-        )}
+        </Reveal>
       </div>
 
-      {/* Drag & Drop Area */}
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-editorial-lg p-8 text-center cursor-pointer transition-all duration-200 ${
-          dragActive
-            ? 'border-editorial-accent-amber bg-editorial-accent-amber/5'
-            : 'border-editorial-border hover:border-editorial-text-secondary bg-editorial-bg/30'
-        }`}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-
-        <div className="flex flex-col items-center justify-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-editorial-border/30 flex items-center justify-center text-editorial-text-secondary">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-inter font-medium text-editorial-text-primary">
-              {uploadMutation.isPending
-                ? 'Uploading resume...'
-                : 'Drop your PDF resume here, or click to browse'}
-            </p>
-            <p className="text-xs text-editorial-text-muted mt-1">
-              Supports text-readable PDF documents up to 5MB. SHA-256 hash dedup enabled.
-            </p>
+      <SectionTransition>
+        <div
+          onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
+          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); }}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
+          onDrop={(e) => {
+            e.preventDefault(); e.stopPropagation(); setDragActive(false);
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+              const file = e.dataTransfer.files[0];
+              if (file.type !== 'application/pdf') {
+                setUploadError('Please select a valid PDF file (.pdf)');
+                return;
+              }
+              uploadMutation.mutate(file);
+            }
+          }}
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative border border-line rounded-sm p-12 text-center cursor-pointer transition-all duration-300 group overflow-hidden ${
+            dragActive ? 'bg-accent/5 border-accent' : 'bg-paper-raised hover:border-ink-muted'
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          
+          <div className="relative z-10 flex flex-col items-center justify-center space-y-6">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
+              dragActive ? 'bg-accent text-white' : 'bg-paper border border-line text-ink-muted group-hover:text-ink'
+            }`}>
+              <UploadCloud className="w-6 h-6" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-lg font-serif text-ink mb-2">
+                {uploadMutation.isPending ? 'Ingesting Document...' : 'Initialize Dossier Extraction'}
+              </p>
+              <p className="text-sm font-sans text-ink-faint max-w-md mx-auto">
+                Drop a text-readable PDF resume here to execute the ATS extraction sequence.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </SectionTransition>
 
       {uploadError && (
-        <div className="mt-4 p-3 bg-red-950/40 border border-red-500/40 rounded-editorial text-sm text-red-300 font-inter">
-          {uploadError}
-        </div>
-      )}
-
-      {/* Processing State */}
-      {currentStatus === 'processing' && (
-        <div className="mt-6 p-4 bg-editorial-accent-amber/5 border border-editorial-accent-amber/20 rounded-editorial-lg flex items-center gap-3">
-          <div className="animate-spin w-5 h-5 border-2 border-editorial-accent-amber border-t-transparent rounded-full" />
-          <span className="text-sm font-inter text-editorial-text-primary">
-            AI Engine Extracting Profile & Scoring Resume...
-          </span>
-        </div>
-      )}
-
-      {/* Failed Recovery State */}
-      {currentStatus === 'failed' && (
-        <div className="mt-6 p-4 bg-red-950/40 border border-red-500/40 rounded-editorial-lg">
-          <p className="text-sm font-inter font-semibold text-red-300">
-            Resume processing encountered an issue.
-          </p>
-          <p className="text-xs font-inter text-red-200/80 mt-1">
-            Your existing manually entered profile fields remain untouched. Please retry uploading a text-readable PDF.
-          </p>
-        </div>
-      )}
-
-      {/* Completed ATS Report Breakdown */}
-      {currentStatus === 'complete' && atsReport && (
-        <div className="mt-6 space-y-4 border-t border-editorial-border pt-6">
-          <h4 className="text-sm font-outfit uppercase tracking-wider text-editorial-text-secondary font-semibold">
-            ATS Compatibility Breakdown
-          </h4>
-
-          {/* Missing Keywords */}
-          {atsReport.missing_keywords && atsReport.missing_keywords.length > 0 && (
+        <SectionTransition>
+          <div className="p-6 bg-critical/5 border border-critical/20 flex items-start gap-4">
+            <AlertTriangle className="w-5 h-5 text-critical shrink-0 mt-0.5" strokeWidth={1.5} />
             <div>
-              <p className="text-xs font-inter text-editorial-text-muted mb-2">
-                Suggested Missing Keywords:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {atsReport.missing_keywords.map((kw, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center px-3 py-1 rounded-editorial-pill text-xs font-inter font-medium bg-red-500/10 text-red-300 border border-red-500/20"
-                  >
-                    + {kw}
-                  </span>
-                ))}
+              <p className="text-sm font-bold text-critical font-mono uppercase tracking-widest mb-1">Extraction Failure</p>
+              <p className="text-sm font-sans text-critical/80">{uploadError}</p>
+            </div>
+          </div>
+        </SectionTransition>
+      )}
+
+      {currentStatus === 'processing' && (
+        <SectionTransition>
+          <div className="p-8 border border-line bg-paper-raised flex items-center gap-6">
+            <div className="w-12 h-12 relative flex items-center justify-center">
+              <div className="absolute inset-0 border border-accent/20 rounded-full animate-ping" />
+              <div className="w-4 h-4 bg-accent rounded-full animate-pulse" />
+            </div>
+            <div>
+              <p className="text-lg font-serif text-ink mb-1">Executing Analysis Sequence</p>
+              <p className="text-sm font-mono text-ink-faint uppercase tracking-widest">Awaiting Analysis...</p>
+            </div>
+          </div>
+        </SectionTransition>
+      )}
+
+      {currentStatus === 'complete' && atsReport && (
+        <div className="space-y-24 border-t border-line pt-16 mt-16">
+          <Reveal y={40} delay={0.1}>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-8 border-b border-line">
+              <div>
+                <span className="font-mono text-[10px] tracking-widest uppercase text-accent mb-4 block">Analysis Complete</span>
+                <h3 className="text-3xl font-serif text-ink tracking-tight">Systematic ATS Evaluation</h3>
+              </div>
+              <div className="flex items-baseline gap-3">
+                <span className="text-7xl font-serif text-ink tracking-tight leading-none">{atsReport.score}</span>
+                <span className="text-sm font-mono uppercase tracking-widest text-ink-faint">/ 100 Base</span>
               </div>
             </div>
-          )}
+          </Reveal>
 
-          {/* Grammar & Structural Notes */}
-          {atsReport.grammar_notes && atsReport.grammar_notes.length > 0 && (
-            <div>
-              <p className="text-xs font-inter text-editorial-text-muted mb-1">
-                Grammar & Formatting Notes:
-              </p>
-              <ul className="list-disc list-inside text-xs font-inter text-editorial-text-secondary space-y-1">
-                {atsReport.grammar_notes.map((note, idx) => (
-                  <li key={idx}>{note}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+            {/* Missing Keywords */}
+            {(atsReport.missing_keywords || []).length > 0 && (
+              <Reveal y={30} delay={0.2} className="space-y-6">
+                <h4 className="font-mono text-xs text-ink uppercase tracking-widest border-b border-line pb-2">Target Vocabulary Delta</h4>
+                <div className="flex flex-wrap gap-2">
+                  {atsReport.missing_keywords!.map((kw, idx) => (
+                    <span key={idx} className="inline-flex items-center px-3 py-1.5 rounded-sm bg-critical/5 border border-critical/20 text-critical font-mono text-xs uppercase tracking-widest">
+                      Missing: {kw}
+                    </span>
+                  ))}
+                </div>
+              </Reveal>
+            )}
 
-          {/* Improvement Suggestions */}
-          {atsReport.improvement_suggestions && atsReport.improvement_suggestions.length > 0 && (
-            <div>
-              <p className="text-xs font-inter text-editorial-text-muted mb-1">
-                Actionable Improvement Suggestions:
-              </p>
-              <ul className="list-disc list-inside text-xs font-inter text-editorial-text-secondary space-y-1">
-                {atsReport.improvement_suggestions.map((sug, idx) => (
-                  <li key={idx}>{sug}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+            {/* Grammar / Formatting */}
+            {(atsReport.grammar_notes || []).length > 0 && (
+              <Reveal y={30} delay={0.3} className="space-y-6">
+                <h4 className="font-mono text-xs text-ink uppercase tracking-widest border-b border-line pb-2">Structural Fidelity</h4>
+                <ul className="space-y-4">
+                  {atsReport.grammar_notes!.map((note, idx) => (
+                    <li key={idx} className="flex gap-4 text-sm font-sans text-ink-muted leading-relaxed">
+                      <span className="font-mono text-ink-faint mt-1">0{idx + 1}</span>
+                      <p>{note}</p>
+                    </li>
+                  ))}
+                </ul>
+              </Reveal>
+            )}
+
+            {/* Recommendations */}
+            {(atsReport.improvement_suggestions || []).length > 0 && (
+              <Reveal y={30} delay={0.4} className="md:col-span-2 space-y-6 pt-8 border-t border-line">
+                <h4 className="font-mono text-xs text-ink uppercase tracking-widest border-b border-line pb-2">Actionable Directives</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {atsReport.improvement_suggestions!.map((sug, idx) => (
+                    <div key={idx} className="p-6 bg-paper-raised border border-line space-y-3">
+                      <CheckCircle2 className="w-4 h-4 text-accent" strokeWidth={2} />
+                      <p className="text-sm font-sans text-ink leading-relaxed">{sug}</p>
+                    </div>
+                  ))}
+                </div>
+              </Reveal>
+            )}
+          </div>
         </div>
       )}
     </div>

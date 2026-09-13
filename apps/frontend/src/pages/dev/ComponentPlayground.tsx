@@ -19,12 +19,12 @@ export const ComponentPlayground: React.FC = () => {
   const { toast } = useToast();
 
   return (
-    <div className="p-section-sm max-w-7xl mx-auto min-h-screen bg-background space-y-16">
+    <div className="p-section-sm max-w-7xl mx-auto min-h-screen bg-paper space-y-16">
       <div>
-        <h1 className="font-display text-4xl font-semibold mb-2 text-text-primary">
+        <h1 className="font-display text-4xl font-semibold mb-2 text-ink">
           Component Playground
         </h1>
-        <p className="text-text-muted mb-12">
+        <p className="text-ink-muted mb-12">
           This route is only available in development mode for building and testing components in isolation.
         </p>
       </div>
@@ -85,15 +85,15 @@ export const ComponentPlayground: React.FC = () => {
           <SectionHeader title="Light Card" />
           <LightCard>
             <h3 className="text-xl font-semibold mb-2">Standard Content</h3>
-            <p className="text-text-muted mb-4">Used for typical dashboard widgets and forms.</p>
+            <p className="text-ink-muted mb-4">Used for typical dashboard widgets and forms.</p>
             <Button variant="secondary" size="sm">Action</Button>
           </LightCard>
         </div>
         <div className="space-y-6">
           <SectionHeader title="Spotlight Card" />
           <SpotlightCard icon={Zap}>
-            <h3 className="text-xl font-semibold mb-2 text-text-inverted">Premium Feature</h3>
-            <p className="text-text-inverted-muted mb-6">High contrast area for important calls to action.</p>
+            <h3 className="text-xl font-semibold mb-2 text-paper">Premium Feature</h3>
+            <p className="text-paper-pressed mb-6">High contrast area for important calls to action.</p>
             <Button variant="accent" size="sm">Get Started</Button>
           </SpotlightCard>
         </div>
@@ -105,8 +105,8 @@ export const ComponentPlayground: React.FC = () => {
           <ScoreCard score={92} />
           <ScoreCard score={65} />
           <ScoreCard score={30} />
-          <div className="flex flex-col gap-4 border border-border-light p-6 rounded-card-md">
-            <p className="text-sm text-text-muted mb-2">Score chips (compact):</p>
+          <div className="flex flex-col gap-4 border border-line p-6 rounded-md">
+            <p className="text-sm text-ink-muted mb-2">Score chips (compact):</p>
             <ScoreChip score={85} />
             <ScoreChip score={45} />
           </div>
@@ -127,7 +127,7 @@ export const ComponentPlayground: React.FC = () => {
           </div>
         </div>
         
-        <div className="border border-border-light rounded-card-md bg-surface-light">
+        <div className="border border-line rounded-md bg-paper">
           <EmptyState 
             icon={Inbox} 
             title="No messages yet" 
@@ -150,7 +150,7 @@ export const ComponentPlayground: React.FC = () => {
         }
       >
         <div className="py-4">
-          <p className="text-text-primary mb-4">
+          <p className="text-ink mb-4">
             Modal content goes here. You can put forms, confirmation details, or anything else inside.
           </p>
         </div>

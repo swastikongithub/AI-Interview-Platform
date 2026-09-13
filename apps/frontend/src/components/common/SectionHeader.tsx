@@ -17,15 +17,15 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       {eyebrow && (
-        <span className="text-sm font-semibold tracking-wider text-accent uppercase">
+        <span className="text-xs font-mono font-medium tracking-widest text-ink-muted uppercase border-b border-line pb-1 inline-block self-start">
           {eyebrow}
         </span>
       )}
-      <h2 className="font-display text-3xl font-semibold tracking-tight text-text-primary">
+      <h2 className="font-serif text-3xl md:text-4xl text-ink">
         {title}
       </h2>
       {description && (
-        <p className="text-text-muted mt-1 max-w-2xl text-lg">
+        <p className="text-ink-muted mt-2 max-w-2xl font-sans text-base leading-relaxed">
           {description}
         </p>
       )}

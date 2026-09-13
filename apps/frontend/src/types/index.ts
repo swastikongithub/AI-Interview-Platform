@@ -71,3 +71,63 @@ export interface CandidateProfile {
   processing_duration_ms?: number | null;
 }
 
+export type InterviewType = 'practice' | 'mock' | 'technical' | 'hr' | 'live';
+export type InterviewMode = 'text' | 'voice' | 'video';
+export type InterviewStatus = 'draft' | 'ready' | 'in_progress' | 'completed' | 'cancelled' | 'expired';
+export type SessionStatus = 'in_progress' | 'completed' | 'abandoned';
+export type EvaluationStatus = 'pending' | 'completed' | 'failed';
+
+export interface Interview {
+  id: string;
+  application_id: string | null;
+  candidate_id: string;
+  interviewer_id: string | null;
+  type: InterviewType;
+  mode: InterviewMode;
+  status: InterviewStatus;
+  scheduled_at: string;
+}
+
+export interface InterviewSession {
+  id: string;
+  interview_id: string;
+  status: SessionStatus;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface InterviewQuestion {
+  id: string;
+  interview_id: string;
+  question_text: string;
+  category: string;
+  difficulty: string;
+  order: number;
+}
+
+export interface InterviewResponse {
+  id: string;
+  session_id: string;
+  question_id: string;
+  response_text: string;
+  ai_evaluation: any | null;
+  ai_score: number | null;
+}
+
+export interface Evaluation {
+  id: string;
+  interview_id: string;
+  session_id: string | null;
+  candidate_id: string;
+  evaluated_by: string | null;
+  status: EvaluationStatus;
+  technical_score: number;
+  communication_score: number;
+  coding_score: number;
+  confidence_score: number;
+  overall_score: number | null;
+  summary: string | null;
+  strengths: any | null;
+  weaknesses: any | null;
+  roadmap: any | null;
+}

@@ -3,62 +3,82 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
+    screens: {
+      sm: '480px',
+      md: '768px',
+      lg: '1200px',
+    },
     extend: {
       colors: {
-        background: '#f7f7f5',
-        surface: {
-          DEFAULT: '#141414',
-          dark: '#0e0e0e',
-          elevated: '#18181b',
-          light: '#ffffff'
+        paper: {
+          DEFAULT: '#fbf9f5',
+          raised: '#f5f3ef',
+          pressed: '#eae8e4',
         },
-        border: {
-          DEFAULT: '#27272a',
-          light: '#e5e5e0',
-          dark: '#27272a'
+        ink: {
+          DEFAULT: '#1b1c1a',
+          muted: '#4c4640',
+          faint: '#7d766f',
         },
-        text: {
-          primary: '#111111',
-          muted: '#555555',
-          tertiary: '#6b6b6b',
-          inverted: '#f0f0f0',
-          'inverted-muted': '#a0a0a0'
+        line: {
+          DEFAULT: '#cec5bd',
         },
         accent: {
-          DEFAULT: '#a95a20',
-          hover: '#c9702f',
-          light: '#df8c51'
+          DEFAULT: '#904d17',
+          ink: '#ffffff',
         },
-        success: '#4a7556',
-        warning: '#8c6313',
-        danger: '#b04343',
-        focus: '#c9702f',
-        glass: 'rgba(14, 14, 14, 0.85)',
-        overlay: 'rgba(0, 0, 0, 0.6)',
+        good: {
+          DEFAULT: '#4a7556',
+        },
+        warning: {
+          DEFAULT: '#8c6313',
+        },
+        critical: {
+          DEFAULT: '#ba1a1a',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Outfit', 'system-ui', 'sans-serif']
+        serif: ['Newsreader', 'serif'],
+        sans: ['"Hanken Grotesk"', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
-      boxShadow: {
-        glow: '0 0 25px -5px rgba(201, 112, 47, 0.25)',
-      },
-      borderRadius: {
-        'pill': '9999px',
-        'card-lg': '24px',
-        'card-md': '16px',
+      fontSize: {
+        'headline-xl': ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "400" }],
+        'headline-lg': ["36px", { lineHeight: "44px", letterSpacing: "-0.015em", fontWeight: "400" }],
+        'headline-md': ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "400" }],
+        'body-lg': ["18px", { lineHeight: "28px", fontWeight: "400" }],
+        'body-md': ["15px", { lineHeight: "24px", fontWeight: "400" }],
+        'body-sm': ["13px", { lineHeight: "20px", fontWeight: "400" }],
+        'label-md': ["12px", { lineHeight: "16px", letterSpacing: "0.06em", fontWeight: "500" }],
+        'label-sm': ["11px", { lineHeight: "14px", letterSpacing: "0.08em", fontWeight: "500" }],
       },
       spacing: {
-        'section-lg': '8rem',
-        'section-md': '4rem',
-        'section-sm': '2rem',
+        'space-xs': '0.25rem',
+        'space-sm': '0.5rem',
+        'space-md': '1rem',
+        'space-lg': '1.75rem',
+        'space-xl': '3rem',
+        'gutter': '1.5rem',
+        'gutter-desktop': '2.5rem',
+        'margin': '1.5rem',
+        'margin-desktop': '4rem',
       },
       transitionDuration: {
-        DEFAULT: '200ms',
-        fast: '150ms',
+        fast: '120ms',
+        base: '200ms',
+        slow: '360ms',
+        reveal: '500ms',
       },
       transitionTimingFunction: {
-        DEFAULT: 'cubic-bezier(0.4, 0, 0.2, 1)', // ease-out (no bounce/spring)
+        standard: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        editorial: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      borderRadius: {
+        DEFAULT: '0.25rem', // sharp structural surfaces
+        sm: '0.125rem',
+        md: '0.25rem',
+        lg: '0.5rem',
+        pill: '9999px', // for badges if needed, though we avoid large radii
       }
     },
   },

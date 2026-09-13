@@ -5,3 +5,9 @@ node_modules
 dist
 coverage
 _archive_do_not_commit/
+
+# Local design references (third-party templates, design exports)
+docs/*.html
+docs/*_files/
+docs/stitch*/
+docs/*.zip

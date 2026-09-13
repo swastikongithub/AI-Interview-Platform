@@ -97,6 +97,61 @@ export const apiService = {
     const res = await api.get('/jobs/recommendations');
     return res.data;
   },
+
+  // --- Interview Domain Endpoints ---
+
+  async getInterviews(): Promise<import('../types').Interview[]> {
+    const res = await api.get('/interviews');
+    return res.data;
+  },
+
+  async getInterviewById(id: string): Promise<import('../types').Interview> {
+    const res = await api.get(`/interviews/${id}`);
+    return res.data;
+  },
+
+  async createPracticeInterview(type: string, mode: string): Promise<import('../types').Interview> {
+    const res = await api.post('/interviews', { type, mode });
+    return res.data;
+  },
+
+  async getInterviewQuestions(id: string): Promise<import('../types').InterviewQuestion[]> {
+    const res = await api.get(`/interviews/${id}/questions`);
+    return res.data;
+  },
+
+  async startInterviewSession(id: string): Promise<import('../types').InterviewSession> {
+    const res = await api.post(`/interviews/${id}/sessions`);
+    return res.data;
+  },
+
+  async getSession(id: string, sessionId: string): Promise<import('../types').InterviewSession> {
+    const res = await api.get(`/interviews/${id}/sessions/${sessionId}`);
+    return res.data;
+  },
+
+  async submitResponse(id: string, sessionId: string, questionId: string, responseText: string): Promise<import('../types').InterviewResponse> {
+    const res = await api.post(`/interviews/${id}/sessions/${sessionId}/responses`, {
+      question_id: questionId,
+      response_text: responseText,
+    });
+    return res.data;
+  },
+
+  async getSessionResponses(id: string, sessionId: string): Promise<import('../types').InterviewResponse[]> {
+    const res = await api.get(`/interviews/${id}/sessions/${sessionId}/responses`);
+    return res.data;
+  },
+
+  async completeSession(id: string, sessionId: string): Promise<void> {
+    const res = await api.patch(`/interviews/${id}/sessions/${sessionId}/complete`);
+    return res.data;
+  },
+
+  async getEvaluation(id: string): Promise<import('../types').Evaluation> {
+    const res = await api.get(`/interviews/${id}/evaluation`);
+    return res.data;
+  }
 };
 
 export default api;

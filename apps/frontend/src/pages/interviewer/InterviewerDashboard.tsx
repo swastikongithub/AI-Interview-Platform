@@ -1,90 +1,125 @@
 import React from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { MaskedTextReveal } from '../../motion/MaskedTextReveal';
+import { Reveal } from '../../motion/Reveal';
 import {
-  Users,
   Calendar,
   CheckSquare,
-  Video,
-  FileText,
+  Users,
   Clock,
+  Sparkles,
 } from 'lucide-react';
 
 export const InterviewerDashboard: React.FC = () => {
+  const { user, profile } = useAuth();
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Interviewer Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-surface border border-border p-8 md:p-10 shadow-2xl">
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-surface-elevated border border-border text-accent text-xs font-bold uppercase tracking-wider">
-            <Users className="w-3.5 h-3.5" />
-            <span>Interviewer Portal • Phase 0 Foundation</span>
+    <div className="w-full space-y-16 lg:space-y-24">
+      {/* Editorial Header */}
+      <div className="flex flex-col lg:flex-row items-start gap-12 lg:gap-24 relative">
+        <div className="flex-1 space-y-8">
+          <div className="inline-flex items-center gap-2 border-b border-ink pb-2">
+            <Sparkles className="w-4 h-4 text-accent" />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-ink">
+              Interviewer Portal
+            </span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white">
-            Interviewer Console
-          </h1>
-          <p className="text-slate-300 text-sm max-w-xl">
-            Review assigned candidate profiles, conduct live or mock interviews, and submit structured evaluation reports.
-          </p>
+          
+          <div className="space-y-6 max-w-2xl">
+            <MaskedTextReveal 
+              text="Interview Assignments."
+              className="text-4xl md:text-6xl font-serif tracking-tight text-ink"
+            />
+            <Reveal delay={0.2} y={20}>
+              <p className="text-lg text-ink-muted leading-relaxed font-sans">
+                Review candidate profiles, conduct interviews, and submit structured evaluations.
+              </p>
+            </Reveal>
+          </div>
         </div>
+
+        {/* Action Column */}
+        <Reveal delay={0.3} y={20} className="w-full lg:w-72 flex-shrink-0">
+          <div className="p-6 border border-line bg-paper-raised flex flex-col gap-6 relative group">
+            <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-ink-faint mb-2">Next Scheduled</p>
+              <h3 className="text-xl font-serif text-ink tracking-tight">No Upcoming</h3>
+            </div>
+            <button
+              disabled
+              className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-paper border border-line text-ink-faint font-sans text-xs font-semibold uppercase tracking-widest cursor-not-allowed relative z-10"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Join Room</span>
+            </button>
+          </div>
+        </Reveal>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="glass-card p-6 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center text-accent shadow-inner">
-            <Calendar className="w-6 h-6" />
+      {/* Stats Matrix */}
+      <div className="grid grid-cols-1 md:grid-cols-2 border-y border-line divide-y md:divide-y-0 md:divide-x divide-line">
+        <Reveal delay={0.4} className="p-8 md:p-12 flex flex-col gap-6">
+          <div className="flex items-center gap-3 text-ink-muted">
+            <Calendar className="w-4 h-4" />
+            <span className="font-mono text-[10px] uppercase tracking-widest">Assigned Interviews</span>
           </div>
-          <div>
-            <p className="text-xs text-slate-400">Assigned Interviews</p>
-            <p className="text-2xl font-extrabold text-white">0</p>
-          </div>
-        </div>
+          <p className="text-5xl font-serif text-ink tracking-tight">0</p>
+        </Reveal>
 
-        <div className="glass-card p-6 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center text-accent shadow-inner">
-            <Video className="w-6 h-6" />
+        <Reveal delay={0.5} className="p-8 md:p-12 flex flex-col gap-6">
+          <div className="flex items-center gap-3 text-ink-muted">
+            <CheckSquare className="w-4 h-4" />
+            <span className="font-mono text-[10px] uppercase tracking-widest">Completed Evaluations</span>
           </div>
-          <div>
-            <p className="text-xs text-slate-400">Live Video Mode</p>
-            <p className="text-2xl font-extrabold text-white">Phase 5</p>
-          </div>
-        </div>
-
-        <div className="glass-card p-6 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center text-accent shadow-inner">
-            <CheckSquare className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400">Completed Reports</p>
-            <p className="text-2xl font-extrabold text-white">0</p>
-          </div>
-        </div>
+          <p className="text-5xl font-serif text-ink tracking-tight">0</p>
+        </Reveal>
       </div>
 
-      {/* Empty State: Upcoming Assigned Interviews */}
-      <div className="glass-card p-8 space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-accent" />
-            <span>Upcoming Assigned Interviews</span>
-          </h2>
-          <p className="text-xs text-slate-400">
-            Your technical and HR interviews will appear here with links to candidate profiles and rubrics.
-          </p>
+      {/* Main Content Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 lg:gap-24">
+        <div className="space-y-8">
+          <Reveal delay={0.5} className="flex items-center justify-between border-b border-line pb-4">
+            <h2 className="text-2xl font-serif text-ink tracking-tight">Upcoming Schedule</h2>
+          </Reveal>
+
+          <Reveal delay={0.6}>
+            <div className="border border-line bg-paper-raised p-12 md:p-24 flex flex-col items-center text-center gap-6">
+              <div className="w-16 h-16 rounded-full border border-line flex items-center justify-center text-ink-faint">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-serif text-ink tracking-tight">No scheduled interviews</h3>
+                <p className="text-sm font-sans text-ink-muted max-w-sm mx-auto leading-relaxed">
+                  Your queue is currently empty. When a recruiter assigns an interview, it will appear here.
+                </p>
+              </div>
+            </div>
+          </Reveal>
         </div>
 
-        <div className="border border-dashed border-border rounded-3xl p-12 text-center space-y-4 bg-surface/40">
-          <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center text-text-muted mx-auto shadow-inner">
-            <Clock className="w-6 h-6" />
-          </div>
-          <p className="text-base font-semibold text-white">
-            No interviews currently assigned
-          </p>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Once recruiters schedule candidates with you, you will see their ATS score, resume, and structured rubric here.
-          </p>
+        {/* Sidebar Dossier */}
+        <div className="space-y-8">
+          <Reveal delay={0.7} className="border-b border-line pb-4">
+            <h2 className="text-sm font-sans text-ink tracking-wide font-semibold">Interviewer Dossier</h2>
+          </Reveal>
+          
+          <Reveal delay={0.8} className="space-y-6 font-mono text-[11px] text-ink-muted">
+            <div className="flex flex-col gap-1 border-b border-line pb-4">
+              <span className="uppercase tracking-widest text-ink-faint">Identity</span>
+              <span className="text-ink">{profile?.name || user?.email || 'Unknown User'}</span>
+            </div>
+            <div className="flex flex-col gap-1 border-b border-line pb-4">
+              <span className="uppercase tracking-widest text-ink-faint">System Role</span>
+              <span className="text-ink">Interviewer</span>
+            </div>
+            <div className="flex flex-col gap-1 border-b border-line pb-4">
+              <span className="uppercase tracking-widest text-ink-faint">Queue Status</span>
+              <span className="text-ink">Clear</span>
+            </div>
+          </Reveal>
         </div>
       </div>
     </div>
   );
 };
-

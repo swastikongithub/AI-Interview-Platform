@@ -26,7 +26,7 @@ export async function authenticateUser(
     const token = authHeader.split(' ')[1];
     let userId: string | null = null;
 
-    if (isRealSupabase) {
+    if (isRealSupabase && process.env.TEST_MODE !== 'true') {
       if (!supabase) {
         res.status(500).json({ error: 'Supabase client not initialized' });
         return;

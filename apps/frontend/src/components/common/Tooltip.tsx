@@ -28,7 +28,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         role="tooltip"
         className={cn(
           'absolute z-50 invisible opacity-0 scale-95 transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:scale-100 group-focus-within:visible group-focus-within:opacity-100 group-focus-within:scale-100',
-          'px-3 py-1.5 text-sm bg-surface-elevated text-text-inverted rounded-card-md whitespace-nowrap shadow-md pointer-events-none',
+          'px-3 py-1.5 text-sm bg-paper-raised text-paper rounded-md whitespace-nowrap shadow-md pointer-events-none',
           positionClasses[position],
           className
         )}

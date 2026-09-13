@@ -15,10 +15,10 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) 
 
   if (status === 'initializing') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-paper">
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="w-8 h-8 text-accent animate-spin" />
-          <p className="text-text-muted text-sm font-medium">Verifying access & permissions...</p>
+          <p className="text-ink-muted text-sm font-medium">Verifying access & permissions...</p>
         </div>
       </div>
     );
@@ -31,8 +31,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) 
   if (status === 'error') {
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-6">
-        <div className="glass-card max-w-md w-full p-8 text-center space-y-6">
-          <div className="w-16 h-16 bg-surface-elevated border border-border rounded-2xl flex items-center justify-center mx-auto text-amber-400 shadow-inner">
+        <div className="bg-paper-raised border border-line max-w-md w-full p-8 text-center space-y-6">
+          <div className="w-16 h-16 bg-paper-raised border border-line rounded-2xl flex items-center justify-center mx-auto text-amber-400 shadow-sm">
             <AlertTriangle className="w-8 h-8" />
           </div>
           <div className="space-y-2">
@@ -55,8 +55,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) 
   if (!allowedRoles.includes(role)) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-6">
-        <div className="glass-card max-w-md w-full p-8 text-center space-y-6">
-          <div className="w-16 h-16 bg-surface-elevated border border-border rounded-2xl flex items-center justify-center mx-auto text-danger shadow-inner">
+        <div className="bg-paper-raised border border-line max-w-md w-full p-8 text-center space-y-6">
+          <div className="w-16 h-16 bg-paper-raised border border-line rounded-2xl flex items-center justify-center mx-auto text-critical shadow-sm">
             <ShieldAlert className="w-8 h-8" />
           </div>
           <div className="space-y-2">
@@ -72,7 +72,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) 
           </div>
 
           {DEMO_ACCOUNTS_ENABLED && (
-            <div className="pt-4 border-t border-border">
+            <div className="pt-4 border-t border-line">
               <p className="text-xs text-slate-400 mb-3">Quick Demo Account Switcher:</p>
               <div className="grid grid-cols-2 gap-2">
                 {allowedRoles.map((targetRole) => (

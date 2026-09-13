@@ -9,6 +9,10 @@ import { ProfilePage } from './pages/candidate/ProfilePage';
 import { RecruiterDashboard } from './pages/recruiter/RecruiterDashboard';
 import { InterviewerDashboard } from './pages/interviewer/InterviewerDashboard';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { InterviewsList } from './pages/candidate/InterviewsList';
+import { InterviewDetail } from './pages/candidate/InterviewDetail';
+import { InterviewSession } from './pages/candidate/InterviewSession';
+import { InterviewEvaluation } from './pages/candidate/InterviewEvaluation';
 
 import { ComponentPlayground } from './pages/dev/ComponentPlayground';
 import { config } from './config';
@@ -44,6 +48,38 @@ export const App: React.FC = () => {
               element={
                 <RoleGuard allowedRoles={['candidate']}>
                   <ProfilePage />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/candidate/interviews"
+              element={
+                <RoleGuard allowedRoles={['candidate']}>
+                  <InterviewsList />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/candidate/interviews/:id"
+              element={
+                <RoleGuard allowedRoles={['candidate']}>
+                  <InterviewDetail />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/candidate/interviews/:id/session/:sessionId"
+              element={
+                <RoleGuard allowedRoles={['candidate']}>
+                  <InterviewSession />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/candidate/interviews/:id/evaluation"
+              element={
+                <RoleGuard allowedRoles={['candidate']}>
+                  <InterviewEvaluation />
                 </RoleGuard>
               }
             />

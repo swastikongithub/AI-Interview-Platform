@@ -70,26 +70,26 @@ export const Modal: React.FC<ModalProps> = ({
         ref={modalRef}
         tabIndex={-1}
         className={cn(
-          'relative w-full max-w-lg bg-surface-light rounded-card-lg shadow-xl outline-none overflow-hidden flex flex-col max-h-[90vh]',
+          'relative w-full max-w-lg bg-paper rounded-lg shadow-xl outline-none overflow-hidden flex flex-col max-h-[90vh]',
           'transition-all duration-200',
           isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4',
           className
         )}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
           <div>
-            <h2 id="modal-title" className="text-xl font-display font-semibold text-text-primary">
+            <h2 id="modal-title" className="text-xl font-display font-semibold text-ink">
               {title}
             </h2>
             {description && (
-              <p id="modal-description" className="text-sm text-text-muted mt-1">
+              <p id="modal-description" className="text-sm text-ink-muted mt-1">
                 {description}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-text-tertiary hover:text-text-primary hover:bg-surface-elevated/5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="p-2 text-ink-faint hover:text-ink hover:bg-paper-raised/5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
@@ -101,7 +101,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {footer && (
-          <div className="px-6 py-4 bg-background border-t border-border-light flex justify-end gap-3 rounded-b-card-lg">
+          <div className="px-6 py-4 bg-paper border-t border-line flex justify-end gap-3 rounded-b-card-lg">
             {footer}
           </div>
         )}

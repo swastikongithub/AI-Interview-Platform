@@ -16,7 +16,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={textareaId}
-            className="text-sm font-medium text-text-primary"
+            className="text-xs font-mono font-medium text-ink uppercase tracking-widest"
           >
             {label}
           </label>
@@ -25,8 +25,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           ref={ref}
           className={cn(
-            'w-full px-4 py-3.5 bg-background border border-border-light rounded-card-md text-text-primary placeholder:text-text-tertiary outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:bg-gray-50 resize-y min-h-[120px]',
-            error && 'border-danger focus:border-danger focus:ring-danger',
+            'w-full px-3 py-2 bg-paper-raised border border-line rounded-sm text-ink font-sans placeholder:text-ink-faint outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50 resize-y min-h-[120px]',
+            error && 'border-critical focus:border-critical focus:ring-critical',
             className
           )}
           aria-invalid={!!error}
@@ -36,7 +36,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {error && (
           <span
             id={`${textareaId}-error`}
-            className="text-sm text-danger mt-1"
+            className="text-sm text-critical mt-1"
           >
             {error}
           </span>

@@ -10,7 +10,7 @@ export const LightCard: React.FC<LightCardProps> = ({ className, children, ...pr
   return (
     <div
       className={cn(
-        'bg-surface-light rounded-card-lg border border-border-light p-8 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-1 hover:border-border-dark/20',
+        'bg-paper rounded-lg border border-line p-8 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-1 hover:border-ink-faint/20',
         className
       )}
       {...props}
