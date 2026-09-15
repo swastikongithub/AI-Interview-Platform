@@ -85,13 +85,31 @@ export class InterviewsService {
     
     const { data, error } = await supabase
       .from('interviews')
-      .update({ interviewer_id: interviewerId, status: 'ready' })
+      .update({ interviewer_id: interviewerId })
       .eq('id', interviewId)
       .select()
       .single();
-      
+
     if (error) throw error;
-    return data as Interview;
+
+    // Assignment only promotes a draft to ready. Assigning a reviewer to an
+    // in-progress or completed interview must not rewind its lifecycle.
+    if ((data as Interview).status !== 'draft') return data as Interview;
+
+    const { data: promoted, error: promoteError } = await supabase
+      .from('interviews')
+      .update({ status: 'ready' })
+      .eq('id', interviewId)
+      .eq('status', 'draft')
+      .select()
+      .single();
+
+    if (promoteError) {
+      // Status moved on concurrently (no draft row matched): return current state.
+      if (promoteError.code === 'PGRST116') return (await this.getInterviewById(interviewId)) as Interview;
+      throw promoteError;
+    }
+    return promoted as Interview;
   }
 
   static async cancelInterview(interviewId: string): Promise<Interview> {
@@ -168,6 +186,19 @@ export class InterviewsService {
       throw error;
     }
     return data as InterviewQuestion;
+  }
+
+  static async listSessionsForInterview(interviewId: string): Promise<InterviewSession[]> {
+    if (!isRealSupabase || !supabase) throw new Error('Real Supabase connection is required.');
+
+    const { data, error } = await supabase
+      .from('interview_sessions')
+      .select('*')
+      .eq('interview_id', interviewId)
+      .order('started_at', { ascending: false });
+
+    if (error) throw error;
+    return data as InterviewSession[];
   }
 
   static async getSession(sessionId: string): Promise<InterviewSession | null> {

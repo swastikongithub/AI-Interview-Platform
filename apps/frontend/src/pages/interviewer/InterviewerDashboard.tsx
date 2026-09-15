@@ -1,125 +1,120 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { MaskedTextReveal } from '../../motion/MaskedTextReveal';
-import { Reveal } from '../../motion/Reveal';
-import {
-  Calendar,
-  CheckSquare,
-  Users,
-  Clock,
-  Sparkles,
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
+import { ArrowRight } from 'lucide-react';
+import { apiService } from '../../services/api';
+import { interviewTitle, queryKeys, useInterviews } from '../../lib/queries';
+import { describeError, formatRelative, initials, shortId } from '../../lib/format';
+import { interviewStatusMeta } from '../../lib/status';
+import type { CandidateProfile, Interview } from '../../types';
+import { Avatar, PageHeader, Section } from '../../components/ui/Layout';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ErrorState, ListSkeleton, StateBlock } from '../../components/ui/States';
+import { TextReveal } from '../../motion/TextReveal';
 
 export const InterviewerDashboard: React.FC = () => {
-  const { user, profile } = useAuth();
+  const query = useInterviews();
+  const interviews = query.data ?? [];
+
+  const toAssess = interviews.filter((i) => i.status === 'completed');
+  const underway = interviews.filter((i) => i.status === 'in_progress');
+  const upcoming = interviews.filter((i) => i.status === 'ready' || i.status === 'draft');
+  const closed = interviews.filter((i) => i.status === 'cancelled' || i.status === 'expired');
+
+  const candidateIds = Array.from(new Set(interviews.map((i) => i.candidate_id))).slice(0, 25);
+  const profiles = useQueries({
+    queries: candidateIds.map((cid) => ({
+      queryKey: queryKeys.profile(cid),
+      queryFn: async (): Promise<CandidateProfile | null> => {
+        try {
+          return await apiService.getProfileById(cid);
+        } catch {
+          return null;
+        }
+      },
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  const nameOf = (cid: string) => profiles[candidateIds.indexOf(cid)]?.data?.name ?? null;
 
   return (
-    <div className="w-full space-y-16 lg:space-y-24">
-      {/* Editorial Header */}
-      <div className="flex flex-col lg:flex-row items-start gap-12 lg:gap-24 relative">
-        <div className="flex-1 space-y-8">
-          <div className="inline-flex items-center gap-2 border-b border-ink pb-2">
-            <Sparkles className="w-4 h-4 text-accent" />
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink">
-              Interviewer Portal
-            </span>
-          </div>
-          
-          <div className="space-y-6 max-w-2xl">
-            <MaskedTextReveal 
-              text="Interview Assignments."
-              className="text-4xl md:text-6xl font-serif tracking-tight text-ink"
-            />
-            <Reveal delay={0.2} y={20}>
-              <p className="text-lg text-ink-muted leading-relaxed font-sans">
-                Review candidate profiles, conduct interviews, and submit structured evaluations.
-              </p>
-            </Reveal>
-          </div>
+    <div>
+      <PageHeader
+        kicker="Assessment"
+        title={
+          <TextReveal>
+            {query.isSuccess && toAssess.length > 0
+              ? `${toAssess.length} ${toAssess.length === 1 ? 'interview is' : 'interviews are'} ready to assess.`
+              : 'Assignments'}
+          </TextReveal>
+        }
+        description="Interviews assigned to you. Finished interviews can be scored now; the rest are listed so you know what’s coming."
+      />
+
+      {query.isPending ? (
+        <ListSkeleton rows={5} label="Loading assignments" className="border-t border-edge" />
+      ) : query.isError ? (
+        <ErrorState error={describeError(query.error)} onRetry={() => query.refetch()} retrying={query.isFetching} />
+      ) : interviews.length === 0 ? (
+        <div className="border-t border-edge">
+          <StateBlock
+            kind="empty"
+            size="page"
+            title="Nothing assigned to you"
+            description="When a recruiter assigns you an interview, it appears here. You’ll be able to read the candidate’s answers and score them."
+          />
         </div>
-
-        {/* Action Column */}
-        <Reveal delay={0.3} y={20} className="w-full lg:w-72 flex-shrink-0">
-          <div className="p-6 border border-line bg-paper-raised flex flex-col gap-6 relative group">
-            <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-ink-faint mb-2">Next Scheduled</p>
-              <h3 className="text-xl font-serif text-ink tracking-tight">No Upcoming</h3>
-            </div>
-            <button
-              disabled
-              className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-paper border border-line text-ink-faint font-sans text-xs font-semibold uppercase tracking-widest cursor-not-allowed relative z-10"
-            >
-              <Calendar className="w-4 h-4" />
-              <span>Join Room</span>
-            </button>
-          </div>
-        </Reveal>
-      </div>
-
-      {/* Stats Matrix */}
-      <div className="grid grid-cols-1 md:grid-cols-2 border-y border-line divide-y md:divide-y-0 md:divide-x divide-line">
-        <Reveal delay={0.4} className="p-8 md:p-12 flex flex-col gap-6">
-          <div className="flex items-center gap-3 text-ink-muted">
-            <Calendar className="w-4 h-4" />
-            <span className="font-mono text-[10px] uppercase tracking-widest">Assigned Interviews</span>
-          </div>
-          <p className="text-5xl font-serif text-ink tracking-tight">0</p>
-        </Reveal>
-
-        <Reveal delay={0.5} className="p-8 md:p-12 flex flex-col gap-6">
-          <div className="flex items-center gap-3 text-ink-muted">
-            <CheckSquare className="w-4 h-4" />
-            <span className="font-mono text-[10px] uppercase tracking-widest">Completed Evaluations</span>
-          </div>
-          <p className="text-5xl font-serif text-ink tracking-tight">0</p>
-        </Reveal>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 lg:gap-24">
-        <div className="space-y-8">
-          <Reveal delay={0.5} className="flex items-center justify-between border-b border-line pb-4">
-            <h2 className="text-2xl font-serif text-ink tracking-tight">Upcoming Schedule</h2>
-          </Reveal>
-
-          <Reveal delay={0.6}>
-            <div className="border border-line bg-paper-raised p-12 md:p-24 flex flex-col items-center text-center gap-6">
-              <div className="w-16 h-16 rounded-full border border-line flex items-center justify-center text-ink-faint">
-                <Clock className="w-6 h-6" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-serif text-ink tracking-tight">No scheduled interviews</h3>
-                <p className="text-sm font-sans text-ink-muted max-w-sm mx-auto leading-relaxed">
-                  Your queue is currently empty. When a recruiter assigns an interview, it will appear here.
-                </p>
-              </div>
-            </div>
-          </Reveal>
+      ) : (
+        <div className="space-y-12">
+          <Group title="Ready to assess" description="The candidate has finished. Read the responses and record your evaluation." items={toAssess} nameOf={nameOf} emphasis empty="No finished interviews waiting." />
+          <Group title="Candidate answering" description="In progress — responses appear as they’re submitted." items={underway} nameOf={nameOf} empty="No interviews in progress." />
+          <Group title="Not started" items={upcoming} nameOf={nameOf} empty="Nothing upcoming." />
+          {closed.length > 0 && <Group title="Closed" items={closed} nameOf={nameOf} empty="" />}
         </div>
-
-        {/* Sidebar Dossier */}
-        <div className="space-y-8">
-          <Reveal delay={0.7} className="border-b border-line pb-4">
-            <h2 className="text-sm font-sans text-ink tracking-wide font-semibold">Interviewer Dossier</h2>
-          </Reveal>
-          
-          <Reveal delay={0.8} className="space-y-6 font-mono text-[11px] text-ink-muted">
-            <div className="flex flex-col gap-1 border-b border-line pb-4">
-              <span className="uppercase tracking-widest text-ink-faint">Identity</span>
-              <span className="text-ink">{profile?.name || user?.email || 'Unknown User'}</span>
-            </div>
-            <div className="flex flex-col gap-1 border-b border-line pb-4">
-              <span className="uppercase tracking-widest text-ink-faint">System Role</span>
-              <span className="text-ink">Interviewer</span>
-            </div>
-            <div className="flex flex-col gap-1 border-b border-line pb-4">
-              <span className="uppercase tracking-widest text-ink-faint">Queue Status</span>
-              <span className="text-ink">Clear</span>
-            </div>
-          </Reveal>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
+
+const Group: React.FC<{
+  title: string;
+  description?: string;
+  items: Interview[];
+  nameOf: (cid: string) => string | null;
+  empty: string;
+  emphasis?: boolean;
+}> = ({ title, description, items, nameOf, empty, emphasis }) => (
+  <Section title={title} description={description} actions={<span className="font-mono text-meta tabular-nums text-fg-muted">{items.length}</span>}>
+    {items.length === 0 ? (
+      <p className="text-body-sm text-fg-muted">{empty}</p>
+    ) : (
+      <ul className={emphasis ? 'stagger grid grid-cols-1 gap-3 md:grid-cols-2' : 'divide-y divide-edge'}>
+        {items.map((i) => {
+          const name = nameOf(i.candidate_id);
+          return (
+            <li key={i.id}>
+              <Link
+                to={`/interviewer/interviews/${i.id}`}
+                className={
+                  emphasis
+                    ? 'group flex items-center gap-4 rounded-md bg-surface p-4 shadow-hairline transition-shadow duration-quick ease-out hover:shadow-[0_0_0_1px_rgb(var(--c-fg))]'
+                    : 'group -mx-3 flex items-center gap-4 rounded-sm px-3 py-3 transition-colors duration-quick hover:bg-surface'
+                }
+              >
+                <Avatar label={initials(name ?? i.candidate_id)} tone={emphasis ? 'signal' : 'default'} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-title-sm text-fg">{name ?? `Candidate #${shortId(i.candidate_id)}`}</span>
+                  <span className="block text-body-sm text-fg-muted">
+                    {interviewTitle(i)} · {formatRelative(i.scheduled_at)}
+                  </span>
+                </span>
+                {!emphasis && <StatusBadge meta={interviewStatusMeta[i.status]} className="hidden sm:inline-flex" />}
+                <ArrowRight className="size-4 text-fg-muted transition-transform duration-quick ease-out group-hover:translate-x-0.5 group-hover:text-fg" aria-hidden="true" />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    )}
+  </Section>
+);

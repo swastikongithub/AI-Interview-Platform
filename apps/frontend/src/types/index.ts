@@ -114,6 +114,24 @@ export interface InterviewResponse {
   ai_score: number | null;
 }
 
+export interface HealthStatus {
+  status: string;
+  uptime: number;
+  version: string;
+  timestamp: string;
+  database_mode: 'supabase_postgres' | 'local_mock' | string;
+}
+
+export interface EvaluationUpdate {
+  technical_score?: number;
+  communication_score?: number;
+  coding_score?: number;
+  confidence_score?: number;
+  overall_score?: number;
+  summary?: string;
+  status?: EvaluationStatus;
+}
+
 export interface Evaluation {
   id: string;
   interview_id: string;
@@ -121,10 +139,10 @@ export interface Evaluation {
   candidate_id: string;
   evaluated_by: string | null;
   status: EvaluationStatus;
-  technical_score: number;
-  communication_score: number;
-  coding_score: number;
-  confidence_score: number;
+  technical_score: number | null;
+  communication_score: number | null;
+  coding_score: number | null;
+  confidence_score: number | null;
   overall_score: number | null;
   summary: string | null;
   strengths: any | null;

@@ -1,212 +1,231 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { apiService } from '../../services/api';
-import { PageTransition } from '../../motion/PageTransition';
-import { Reveal } from '../../motion/Reveal';
-import { MaskedTextReveal } from '../../motion/MaskedTextReveal';
-import { ArrowLeft, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
-import { Evaluation } from '../../types';
+import { useLocation, useParams } from 'react-router-dom';
+import { ArrowRight, Check, Hourglass } from 'lucide-react';
+import { interviewTitle, useEvaluation, useInterview } from '../../lib/queries';
+import { describeError, formatDateTime, shortId } from '../../lib/format';
+import { evaluationStatusMeta, interviewStatusMeta } from '../../lib/status';
+import { ButtonLink } from '../../components/ui/Button';
+import { PageHeader, Section } from '../../components/ui/Layout';
+import { Meter } from '../../components/ui/Meter';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ErrorState, Skeleton, StateBlock } from '../../components/ui/States';
+import { Transcript, useTranscript } from '../../components/interview/Transcript';
+import { TextReveal } from '../../motion/TextReveal';
+
+/** Evaluation JSON fields are free-form; render only what is genuinely a list of text. */
+export function toTextList(value: unknown): string[] {
+  if (!value) return [];
+  if (typeof value === 'string') return value.trim() ? [value] : [];
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') {
+          const o = item as Record<string, unknown>;
+          const text = o.text ?? o.title ?? o.description ?? o.summary;
+          return typeof text === 'string' ? text : null;
+        }
+        return null;
+      })
+      .filter((s): s is string => Boolean(s && s.trim()));
+  }
+  return [];
+}
 
 export const InterviewEvaluation: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const location = useLocation();
+  const justCompleted = Boolean((location.state as { justCompleted?: boolean } | null)?.justCompleted);
+  const interviewQuery = useInterview(id);
+  const evaluationQuery = useEvaluation(id, interviewQuery.data?.status === 'completed');
+  const interview = interviewQuery.data;
+  const evaluation = evaluationQuery.data;
+  const transcript = useTranscript(id, evaluation?.session_id);
 
-  const { data: evaluation, isLoading, error } = useQuery<Evaluation>({
-    queryKey: ['evaluation', id],
-    queryFn: () => apiService.getEvaluation(id!),
-    enabled: !!id,
-    retry: false, // 404 is expected if pending
-  });
+  const back = { to: '/candidate/interviews', label: 'Interviews' };
 
-  if (isLoading) {
+  if (interviewQuery.isPending || (interview?.status === 'completed' && evaluationQuery.isPending)) {
     return (
-      <PageTransition className="font-sans min-h-screen pb-32 pt-32 px-6 md:px-12 max-w-[1400px] mx-auto">
-        <span className="font-mono text-xs uppercase tracking-widest text-ink-muted animate-pulse">Retrieving Dossier...</span>
-      </PageTransition>
+      <div className="space-y-6" role="status" aria-label="Loading results">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-12 w-1/2 max-w-md" />
+        <div className="grid grid-cols-1 gap-10 pt-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <Skeleton className="h-56" />
+          <Skeleton className="h-72" />
+        </div>
+      </div>
     );
   }
 
-  // Handle case where evaluation doesn't exist yet or is restricted by RLS/Backend
-  if (error || !evaluation) {
+  if (interviewQuery.isError || !interview) {
+    const err = describeError(interviewQuery.error, 'Results could not be loaded.');
     return (
-      <PageTransition className="font-sans min-h-screen pb-32 pt-32">
-        <section className="px-6 md:px-12 max-w-[1400px] mx-auto">
-          <button 
-            onClick={() => navigate('/candidate/interviews')}
-            className="inline-flex items-center gap-2 font-mono text-[10px] tracking-widest uppercase text-ink-muted hover:text-ink transition-colors mb-12"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            <span>Back to Directory</span>
-          </button>
-          
-          <div className="py-32 border border-line bg-paper-raised relative overflow-hidden group flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-full bg-paper flex items-center justify-center border border-line mb-6">
-              <FileText className="w-6 h-6 text-ink-muted" />
-            </div>
-            <div className="relative z-10 space-y-4 px-6">
-              <h2 className="text-3xl font-serif text-ink">Evaluation Pending</h2>
-              <p className="text-sm font-sans text-ink-muted max-w-sm mx-auto leading-relaxed">
-                The session has concluded, but the evaluation report is not yet available or is still processing.
-              </p>
-            </div>
-          </div>
-        </section>
-      </PageTransition>
+      <>
+        <PageHeader back={back} title={<h1>Results</h1>} />
+        <ErrorState
+          error={err.kind === 'not_found' ? { ...err, message: 'This interview doesn’t exist, or it isn’t yours.' } : err}
+          title={err.kind === 'not_found' ? 'Interview not found' : undefined}
+          onRetry={() => interviewQuery.refetch()}
+        />
+      </>
     );
   }
 
-  if (evaluation.status === 'failed') {
+  const header = (
+    <PageHeader
+      back={back}
+      kicker={`Results · #${shortId(interview.id)}`}
+      title={<h1>{interviewTitle(interview)}</h1>}
+      meta={
+        <>
+          <StatusBadge meta={interviewStatusMeta[interview.status]} />
+          {evaluation && <StatusBadge meta={evaluationStatusMeta[evaluation.status]} />}
+        </>
+      }
+    />
+  );
+
+  if (interview.status !== 'completed') {
     return (
-      <PageTransition className="font-sans min-h-screen pb-32 pt-32">
-        <section className="px-6 md:px-12 max-w-[1400px] mx-auto">
-          <button 
-            onClick={() => navigate('/candidate/interviews')}
-            className="inline-flex items-center gap-2 font-mono text-[10px] tracking-widest uppercase text-ink-muted hover:text-ink transition-colors mb-12"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            <span>Back to Directory</span>
-          </button>
-          
-          <div className="py-20 border border-red-500/20 bg-red-500/5 flex flex-col items-center text-center">
-            <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-            <h2 className="text-2xl font-serif text-red-500 mb-2">Processing Error</h2>
-            <p className="text-sm font-sans text-red-500/80 max-w-md">
-              There was a failure generating the evaluation for this assessment. Support has been notified.
+      <>
+        {header}
+        <StateBlock
+          kind="pending"
+          title="Finish the interview to get results"
+          description="Results are only produced for interviews you’ve finished and submitted."
+          actions={
+            <ButtonLink to={`/candidate/interviews/${interview.id}`} trailingIcon={<ArrowRight />}>
+              Go to interview
+            </ButtonLink>
+          }
+        />
+      </>
+    );
+  }
+
+  if (evaluationQuery.isError) {
+    return (
+      <>
+        {header}
+        <ErrorState error={describeError(evaluationQuery.error)} onRetry={() => evaluationQuery.refetch()} retrying={evaluationQuery.isFetching} />
+      </>
+    );
+  }
+
+  // Released evaluations only reach candidates; anything else reads as "not yet".
+  if (!evaluation || evaluation.status !== 'completed') {
+    return (
+      <>
+        {header}
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] lg:gap-14">
+          <div className="theme-night self-start rounded-lg bg-canvas p-6 text-fg sm:p-8">
+            <span
+              className={`grid size-11 place-items-center rounded-md ${justCompleted ? 'bg-signal text-signal-fg' : 'bg-surface text-caution'}`}
+              aria-hidden="true"
+            >
+              {justCompleted ? <Check className="size-5" strokeWidth={2.5} /> : <Hourglass className="size-5" />}
+            </span>
+            <TextReveal as="h2" className="mt-5 font-display text-display-md text-fg">
+              {justCompleted ? 'Submitted. Nicely done.' : 'Your evaluation isn’t released yet.'}
+            </TextReveal>
+            <p className="mt-3 text-body-lg text-fg-secondary">
+              {justCompleted
+                ? 'Your answers are with the evaluation queue. Results appear on this page once an interviewer releases them.'
+                : 'Results appear on this page once an interviewer reviews your answers and releases the evaluation. There’s nothing you need to do.'}
             </p>
+            <div className="activity-bar mt-8 h-0.5 rounded-full bg-edge" aria-hidden="true" />
+            <p className="mt-3 font-mono text-micro uppercase text-fg-muted">Status: awaiting review</p>
           </div>
-        </section>
-      </PageTransition>
+
+          <Section title="What you submitted" description="Your answers exactly as they were saved.">
+            <Transcript data={transcript} audience="candidate" />
+          </Section>
+        </div>
+      </>
     );
   }
+
+  const strengths = toTextList(evaluation.strengths);
+  const weaknesses = toTextList(evaluation.weaknesses);
+  const roadmap = toTextList(evaluation.roadmap);
+  const criteria = [
+    { label: 'Technical depth', value: evaluation.technical_score },
+    { label: 'Communication', value: evaluation.communication_score },
+    { label: 'Problem solving & code', value: evaluation.coding_score },
+    { label: 'Confidence', value: evaluation.confidence_score },
+  ];
 
   return (
-    <PageTransition className="font-sans min-h-screen pb-32">
-      <section className="relative px-6 md:px-12 pt-32 pb-16 max-w-[1400px] mx-auto border-b border-line">
-        <button 
-          onClick={() => navigate('/candidate/interviews')}
-          className="inline-flex items-center gap-2 font-mono text-[10px] tracking-widest uppercase text-ink-muted hover:text-ink transition-colors mb-12"
-        >
-          <ArrowLeft className="w-3 h-3" />
-          <span>Back to Directory</span>
-        </button>
-        
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-accent border-b border-line pb-1">
-              Final Assessment
-            </span>
-            <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-600 border border-green-500/20 rounded-full font-mono text-[10px] uppercase tracking-widest">
-              <CheckCircle className="w-3 h-3" />
-              <span>Completed</span>
-            </div>
+    <>
+      {header}
+
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[19rem_minmax(0,1fr)] lg:gap-16">
+        <aside className="space-y-8 lg:sticky lg:top-10 lg:self-start" aria-label="Scores">
+          <div className="theme-night rounded-lg bg-canvas p-6 text-fg">
+            <p className="font-mono text-meta uppercase tracking-[0.08em] text-fg-muted">Overall</p>
+            {typeof evaluation.overall_score === 'number' ? (
+              <p className="mt-2 font-display text-[4.5rem] font-semibold leading-none tracking-[-0.04em] text-fg">
+                {evaluation.overall_score}
+                <span className="ml-1 font-mono text-body text-fg-muted">/100</span>
+              </p>
+            ) : (
+              <p className="mt-3 text-title-md text-fg-secondary">No overall score given</p>
+            )}
           </div>
-          
-          <h1 className="text-5xl md:text-7xl font-serif text-ink tracking-tight">
-            <MaskedTextReveal text="Evaluation Report" delay={0.1} />
-          </h1>
-        </div>
-      </section>
+          <div className="space-y-5">
+            {criteria.map((c, i) => (
+              <Meter key={c.label} label={c.label} value={c.value} index={i} />
+            ))}
+          </div>
+        </aside>
 
-      <section className="max-w-[1400px] mx-auto px-6 md:px-12 pt-16">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-          
-          {/* Main Content */}
-          <main className="lg:col-span-8 space-y-16">
-            <Reveal delay={0.3} y={20} className="space-y-8 border border-line p-8 md:p-12 bg-paper-raised">
-              <h2 className="font-mono text-xs text-ink-faint uppercase tracking-widest border-b border-line pb-4">
-                Executive Summary
-              </h2>
-              <div className="prose prose-p:text-ink prose-p:font-sans prose-p:leading-relaxed max-w-none">
-                <p>{evaluation.summary || 'No summary provided.'}</p>
-              </div>
-            </Reveal>
+        <div className="space-y-12">
+          <Section title="Summary">
+            {evaluation.summary ? (
+              <p className="max-w-prose whitespace-pre-wrap text-body-lg text-fg">{evaluation.summary}</p>
+            ) : (
+              <p className="text-body text-fg-muted">The interviewer didn’t write a summary.</p>
+            )}
+          </Section>
 
-            <Reveal delay={0.4} y={20} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Strengths */}
-                <div className="p-8 border border-line bg-paper">
-                  <h3 className="font-mono text-xs uppercase tracking-widest text-ink mb-6 border-b border-line pb-4">
-                    Key Strengths
-                  </h3>
-                  <ul className="space-y-4">
-                    {evaluation.strengths && Array.isArray(evaluation.strengths) ? (
-                      evaluation.strengths.map((str: string, i: number) => (
-                        <li key={i} className="flex gap-4 items-start text-sm font-sans text-ink-muted">
-                          <span className="text-accent mt-1">✦</span>
-                          <span>{str}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-sm font-sans text-ink-faint italic">No structured data</li>
-                    )}
-                  </ul>
-                </div>
+          {(strengths.length > 0 || weaknesses.length > 0) && (
+            <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+              {strengths.length > 0 && <FeedbackList title="Strengths" items={strengths} />}
+              {weaknesses.length > 0 && <FeedbackList title="To work on" items={weaknesses} />}
+            </div>
+          )}
 
-                {/* Areas for Growth */}
-                <div className="p-8 border border-line bg-paper">
-                  <h3 className="font-mono text-xs uppercase tracking-widest text-ink mb-6 border-b border-line pb-4">
-                    Growth Areas
-                  </h3>
-                  <ul className="space-y-4">
-                    {evaluation.weaknesses && Array.isArray(evaluation.weaknesses) ? (
-                      evaluation.weaknesses.map((weak: string, i: number) => (
-                        <li key={i} className="flex gap-4 items-start text-sm font-sans text-ink-muted">
-                          <span className="text-red-400 mt-1">✦</span>
-                          <span>{weak}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-sm font-sans text-ink-faint italic">No structured data</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </Reveal>
-          </main>
-          
-          {/* Metrics Sidebar */}
-          <aside className="lg:col-span-4">
-            <Reveal delay={0.5} y={20} className="sticky top-32 space-y-8 p-8 border border-line bg-paper">
-              <h3 className="font-mono text-xs text-ink uppercase tracking-widest border-b border-line pb-4">
-                Quantitative Metrics
-              </h3>
-              
-              <div className="space-y-6">
-                {[
-                  { label: 'Technical Accuracy', score: evaluation.technical_score },
-                  { label: 'Communication', score: evaluation.communication_score },
-                  { label: 'Coding Standards', score: evaluation.coding_score },
-                  { label: 'Confidence', score: evaluation.confidence_score },
-                ].map((metric) => (
-                  <div key={metric.label} className="space-y-2">
-                    <div className="flex justify-between items-end">
-                      <span className="text-xs font-sans text-ink-muted">{metric.label}</span>
-                      <span className="font-mono text-sm text-ink">{metric.score} / 100</span>
-                    </div>
-                    <div className="w-full h-1 bg-paper-pressed overflow-hidden">
-                      <div 
-                        className="h-full bg-accent transition-all duration-1000 ease-out"
-                        style={{ width: `${metric.score}%` }}
-                      />
-                    </div>
-                  </div>
+          {roadmap.length > 0 && (
+            <Section title="Suggested next steps">
+              <ol className="space-y-3">
+                {roadmap.map((item, i) => (
+                  <li key={i} className="flex gap-4 text-body text-fg">
+                    <span className="font-mono text-meta text-fg-muted">{String(i + 1).padStart(2, '0')}</span>
+                    <span>{item}</span>
+                  </li>
                 ))}
-              </div>
+              </ol>
+            </Section>
+          )}
 
-              {evaluation.overall_score !== null && (
-                <div className="pt-8 mt-8 border-t border-line text-center">
-                  <span className="text-xs font-mono uppercase tracking-widest text-ink-faint block mb-2">Overall Synthesis</span>
-                  <div className="text-6xl font-serif text-ink tracking-tight leading-none">
-                    {evaluation.overall_score}
-                  </div>
-                </div>
-              )}
-            </Reveal>
-          </aside>
-          
+          <Section title="Your answers" description={transcript.session?.completed_at ? `Submitted ${formatDateTime(transcript.session.completed_at)}` : undefined}>
+            <Transcript data={transcript} audience="candidate" />
+          </Section>
         </div>
-      </section>
-    </PageTransition>
+      </div>
+    </>
   );
 };
+
+const FeedbackList: React.FC<{ title: string; items: string[] }> = ({ title, items }) => (
+  <Section title={title} headingLevel="h2">
+    <ul className="space-y-3">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-3 text-body text-fg">
+          <span className="mt-2.5 h-px w-3 shrink-0 bg-fg-muted" aria-hidden="true" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  </Section>
+);

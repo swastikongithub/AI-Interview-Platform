@@ -179,6 +179,28 @@ router.post('/:id/sessions', authenticateUser, async (req: AuthenticatedRequest,
   }
 });
 
+// List Sessions for Interview (newest first)
+// Lets a candidate resume an in-progress attempt and lets reviewers locate the
+// responses for an interview. Access mirrors GET /:id exactly.
+router.get('/:id/sessions', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const interview = await InterviewsService.getInterviewById(req.params.id);
+    if (!interview) return res.status(404).json({ error: 'Interview not found' });
+
+    if (req.user!.role === 'candidate' && interview.candidate_id !== req.user!.id) {
+      return res.status(404).json({ error: 'Interview not found' });
+    }
+    if (req.user!.role === 'interviewer' && interview.interviewer_id !== req.user!.id) {
+      return res.status(404).json({ error: 'Interview not found' });
+    }
+
+    const sessions = await InterviewsService.listSessionsForInterview(req.params.id);
+    return res.json(sessions);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Get Session
 router.get('/:id/sessions/:sessionId', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {

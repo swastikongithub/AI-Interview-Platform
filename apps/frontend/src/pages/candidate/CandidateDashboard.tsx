@@ -1,139 +1,308 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, ArrowUpRight, Check, Circle, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowRight } from 'lucide-react';
-import { PageTransition } from '../../motion/PageTransition';
-import { Reveal } from '../../motion/Reveal';
-import { MaskedTextReveal } from '../../motion/MaskedTextReveal';
-import { Parallax } from '../../motion/Parallax';
-import { ImageReveal } from '../../motion/ImageReveal';
-import { ScrollProgress } from '../../motion/ScrollProgress';
-import { Badge } from '../../components/common/Badge';
+import { apiService } from '../../services/api';
+import { useInterviews, useJobRecommendations, useResumeStatus, queryKeys, interviewTitle } from '../../lib/queries';
+import { describeError, formatRelative } from '../../lib/format';
+import { interviewStatusMeta, resumeStatusMeta } from '../../lib/status';
+import type { Interview, ResumeStatus } from '../../types';
+import { Button, ButtonLink } from '../../components/ui/Button';
+import { Section } from '../../components/ui/Layout';
+import { StatusDot } from '../../components/ui/StatusBadge';
+import { ErrorState, ListSkeleton, Skeleton, StateBlock } from '../../components/ui/States';
+import { useToast } from '../../components/ui/Toast';
+import { TextReveal } from '../../motion/TextReveal';
+import { cn } from '../../utils/cn';
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+interface NextStep {
+  eyebrow: string;
+  title: string;
+  body: string;
+  action: { label: string; to?: string; onClick?: () => void; loading?: boolean };
+  pending?: boolean;
+}
 
 export const CandidateDashboard: React.FC = () => {
   const { profile, user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { notify } = useToast();
+  const interviewsQuery = useInterviews();
+  const resumeQuery = useResumeStatus();
+  const jobsQuery = useJobRecommendations();
 
-  const skillsCount = profile?.skills?.length || 0;
-  const isProfileComplete = Boolean(
-    profile?.name && (profile?.skills?.length ?? 0) > 0 && (profile?.education?.length ?? 0) > 0
-  );
+  const createPractice = useMutation({
+    mutationFn: () => apiService.createPracticeInterview('practice', 'text'),
+    onSuccess: (interview) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.interviews });
+      navigate(`/candidate/interviews/${interview.id}`);
+    },
+    onError: (err) => notify({ tone: 'error', title: 'Couldn’t create the interview', description: describeError(err).message }),
+  });
+
+  const firstName = (profile?.name || user?.email?.split('@')[0] || '').split(' ')[0];
+  const interviews = interviewsQuery.data ?? [];
+  const inProgress = interviews.find((i) => i.status === 'in_progress');
+  const ready = interviews.find((i) => i.status === 'ready');
+  const resumeStatus = (resumeQuery.data?.resume_status ?? 'none') as ResumeStatus;
+  const hasBasics = Boolean(profile?.name) && (profile?.skills?.length ?? 0) > 0;
+
+  const loadingCore = interviewsQuery.isPending || resumeQuery.isPending;
+
+  const next: NextStep | null = loadingCore
+    ? null
+    : inProgress
+      ? {
+          eyebrow: 'Continue',
+          title: 'You have an interview in progress.',
+          body: 'Your submitted answers are saved. Pick up at the next unanswered question.',
+          action: { label: 'Resume interview', to: `/candidate/interviews/${inProgress.id}` },
+        }
+      : !hasBasics
+        ? {
+            eyebrow: 'Set up',
+            title: 'Add your name and skills.',
+            body: 'Your skills power job matching, and interviewers see your profile alongside your answers.',
+            action: { label: 'Complete profile', to: '/candidate/profile' },
+          }
+        : resumeStatus === 'processing'
+          ? {
+              eyebrow: 'Working',
+              title: 'Your résumé is being analyzed.',
+              body: 'Extraction and ATS scoring run in the background. This page updates when the report is ready.',
+              action: { label: 'View progress', to: '/candidate/resume' },
+              pending: true,
+            }
+          : resumeStatus === 'none' || resumeStatus === 'failed'
+            ? {
+                eyebrow: resumeStatus === 'failed' ? 'Retry' : 'Next',
+                title: resumeStatus === 'failed' ? 'Your last résumé analysis failed.' : 'Upload your résumé.',
+                body: 'Get ATS feedback on missing keywords and structure, and pre-fill your experience.',
+                action: { label: resumeStatus === 'failed' ? 'Upload again' : 'Upload résumé', to: '/candidate/resume' },
+              }
+            : ready
+              ? {
+                  eyebrow: 'Ready',
+                  title: 'An interview is ready to start.',
+                  body: 'Read the brief, then answer at your own pace. You can leave and resume.',
+                  action: { label: 'Open brief', to: `/candidate/interviews/${ready.id}` },
+                }
+              : {
+                  eyebrow: 'Practice',
+                  title: 'Start a practice interview.',
+                  body: 'A short text interview on system design and architecture. Answers save as you go.',
+                  action: {
+                    label: 'Start practice interview',
+                    onClick: () => createPractice.mutate(),
+                    loading: createPractice.isPending,
+                  },
+                };
 
   return (
-    <PageTransition className="font-sans min-h-screen pb-32">
-      <ScrollProgress />
-      
-      {/* Cinematic Hero Section */}
-      <section className="relative px-6 md:px-12 pt-32 pb-24 max-w-[1400px] mx-auto border-b border-line">
-        <Parallax offset={40} className="max-w-4xl">
-          <span className="font-mono text-[10px] tracking-widest uppercase text-accent border-b border-line pb-1 mb-8 inline-block">
-            Candidate Portal
-          </span>
-          <h1 className="text-5xl md:text-7xl font-serif text-ink tracking-tight mb-8">
-            <MaskedTextReveal text={`Welcome back, ${profile?.name || user?.email?.split('@')[0] || 'Candidate'}.`} delay={0.1} />
-          </h1>
-          <Reveal delay={0.6} y={20}>
-            <p className="text-xl md:text-2xl text-ink-muted font-sans font-light leading-relaxed max-w-2xl">
-              Prepare for technical interviews, practice your communication skills, and track your analytical ATS capabilities.
-            </p>
-          </Reveal>
-        </Parallax>
-      </section>
+    <div className="space-y-12 md:space-y-16">
+      <header className="space-y-3">
+        <p className="font-mono text-meta uppercase tracking-[0.08em] text-fg-muted">Home</p>
+        <TextReveal className="font-display text-display-lg text-fg">
+          {greeting()}
+          {firstName ? `, ${firstName}` : ''}.
+        </TextReveal>
+      </header>
 
-      <section className="max-w-[1400px] mx-auto px-6 md:px-12 pt-24">
-        <div className="flex flex-col lg:flex-row gap-16 md:gap-24">
-          
-          {/* Identity & Status Column (Left) */}
-          <aside className="lg:w-1/3 lg:sticky lg:top-24 self-start space-y-16">
-            <Reveal delay={0.7} y={30} className="space-y-12">
-              {/* ATS Score Preview */}
-              <div className="space-y-4">
-                <h3 className="font-mono text-xs uppercase tracking-widest text-ink-faint border-b border-line pb-2">
-                  Analytical Baseline
-                </h3>
-                <div className="flex items-end gap-3 pt-2">
-                  <span className="text-6xl font-serif text-ink tracking-tight leading-none">{profile?.ats_score || 85}</span>
-                  <span className="text-sm font-sans text-ink-muted mb-1 uppercase tracking-widest font-mono">/ 100 ATS</span>
-                </div>
-              </div>
+      <NextStepBand step={next} />
 
-              {/* Completeness */}
-              <div className="space-y-4">
-                <h3 className="font-mono text-xs uppercase tracking-widest text-ink-faint border-b border-line pb-2">
-                  Dossier Status
-                </h3>
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-sm font-sans text-ink">{skillsCount} Verified Skills</span>
-                  <Badge variant={isProfileComplete ? 'success' : 'warning'}>
-                    {isProfileComplete ? 'Complete' : 'Incomplete'}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className="pt-4 border-t border-line">
-                <Link
-                  to="/candidate/profile"
-                  className="inline-flex items-center gap-3 text-xs font-mono uppercase tracking-widest text-accent hover:text-ink transition-colors group"
-                >
-                  <span>Access Dossier</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
-            </Reveal>
-          </aside>
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-14">
+        <Section
+          title="Interviews"
+          description="Your most recent attempts."
+          actions={
+            interviews.length > 0 ? (
+              <Link to="/candidate/interviews" className="inline-flex items-center gap-1 rounded-xs text-body-sm text-fg-secondary hover:text-fg">
+                All interviews <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Link>
+            ) : undefined
+          }
+        >
+          {interviewsQuery.isPending ? (
+            <ListSkeleton rows={3} label="Loading interviews" />
+          ) : interviewsQuery.isError ? (
+            <ErrorState error={describeError(interviewsQuery.error)} onRetry={() => interviewsQuery.refetch()} retrying={interviewsQuery.isFetching} />
+          ) : interviews.length === 0 ? (
+            <StateBlock
+              kind="empty"
+              title="No interviews yet"
+              description="Practice interviews you start will be listed here with their status."
+              actions={
+                <Button variant="secondary" size="sm" leadingIcon={<Plus />} loading={createPractice.isPending} onClick={() => createPractice.mutate()}>
+                  Start practice interview
+                </Button>
+              }
+            />
+          ) : (
+            <ul className="stagger divide-y divide-edge">
+              {interviews.slice(0, 5).map((interview) => (
+                <InterviewRow key={interview.id} interview={interview} />
+              ))}
+            </ul>
+          )}
+        </Section>
 
-          {/* Activity & Content Column (Right) */}
-          <main className="lg:w-2/3 space-y-32">
-            
-            {/* Upcoming Interviews */}
-            <Reveal delay={0.8} y={40} className="space-y-8">
-              <div className="flex flex-col gap-2 border-b border-line pb-6">
-                <span className="font-mono text-[10px] text-accent uppercase tracking-widest">Live Execution</span>
-                <h2 className="text-4xl font-serif text-ink">Scheduled Activity</h2>
-              </div>
-              
-              <div className="py-20 border border-line bg-paper-raised relative overflow-hidden group flex flex-col items-center justify-center text-center">
-                {/* Subtle cinematic background abstract */}
-                <div className="absolute inset-0 bg-gradient-to-br from-paper via-paper-raised to-paper-pressed opacity-50 transition-opacity group-hover:opacity-80" />
-                <div className="relative z-10 space-y-4 px-6">
-                  <p className="text-2xl font-serif text-ink">No active schedules</p>
-                  <p className="text-sm font-sans text-ink-muted max-w-sm mx-auto leading-relaxed">
-                    When you apply to jobs or start an AI practice interview, your scheduled evaluation sessions will be indexed here.
-                  </p>
-                </div>
-              </div>
-            </Reveal>
-
-            {/* Active Practice */}
-            <Reveal delay={0.9} y={40} className="space-y-8">
-              <div className="flex flex-col gap-2 border-b border-line pb-6">
-                <span className="font-mono text-[10px] text-accent uppercase tracking-widest">Asynchronous Sandbox</span>
-                <h2 className="text-4xl font-serif text-ink">Technical Practice</h2>
-              </div>
-
-              <div className="grid grid-cols-1 gap-8">
-                <Link
-                  to="/candidate/interviews"
-                  className="p-8 border border-line bg-paper-raised hover:bg-paper-pressed transition-colors space-y-6 flex flex-col justify-between min-h-[240px] group"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="font-mono text-xs text-ink-faint uppercase tracking-widest mb-3 block border-b border-line pb-2 inline-block">Adaptive Text</span>
-                      <p className="text-sm text-ink-muted font-sans leading-relaxed">Behavioral & Technical interview preparation.</p>
-                    </div>
-                    <ArrowRight className="w-6 h-6 text-accent group-hover:translate-x-2 transition-transform" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-serif text-ink tracking-tight mb-2 group-hover:text-accent transition-colors">Access Interview Dossier</p>
-                    <p className="text-xs font-mono uppercase tracking-widest text-ink-faint">View all your sessions</p>
-                  </div>
-                </Link>
-              </div>
-            </Reveal>
-
-          </main>
-
-        </div>
-      </section>
-    </PageTransition>
+        <Section title="Readiness" description="What recruiters and matching rely on.">
+          <ul className="divide-y divide-edge">
+            <ChecklistItem
+              done={Boolean(profile?.name)}
+              title="Name on profile"
+              detail={profile?.name || 'Not set'}
+              to="/candidate/profile"
+            />
+            <ChecklistItem
+              done={(profile?.skills?.length ?? 0) > 0}
+              title="Skills"
+              detail={(profile?.skills?.length ?? 0) > 0 ? `${profile!.skills.length} listed` : 'None listed'}
+              to="/candidate/profile"
+            />
+            <ChecklistItem
+              done={(profile?.experience?.length ?? 0) > 0}
+              title="Experience"
+              detail={(profile?.experience?.length ?? 0) > 0 ? `${profile!.experience.length} ${profile!.experience.length === 1 ? 'role' : 'roles'}` : 'None added'}
+              to="/candidate/profile"
+            />
+            <ChecklistItem
+              done={resumeStatus === 'complete'}
+              title="Résumé analysis"
+              loading={resumeQuery.isPending}
+              detail={
+                resumeStatus === 'complete' && typeof resumeQuery.data?.ats_report?.score === 'number'
+                  ? `ATS score ${resumeQuery.data.ats_report.score}/100`
+                  : resumeStatusMeta[resumeStatus]?.label ?? 'Unknown'
+              }
+              to="/candidate/resume"
+            />
+            <ChecklistItem
+              done={(jobsQuery.data?.recommendations?.length ?? 0) > 0 && (jobsQuery.data?.recommendations ?? []).some((j: any) => j.match_percentage > 0)}
+              title="Job matches"
+              loading={jobsQuery.isPending}
+              detail={
+                jobsQuery.isError
+                  ? 'Unavailable right now'
+                  : `${(jobsQuery.data?.recommendations ?? []).filter((j: any) => j.match_percentage > 0).length} of ${jobsQuery.data?.total_jobs ?? 0} roles overlap your skills`
+              }
+              to="/candidate/jobs"
+            />
+          </ul>
+        </Section>
+      </div>
+    </div>
   );
 };
+
+const NextStepBand: React.FC<{ step: NextStep | null }> = ({ step }) => {
+  if (!step) {
+    return (
+      <div className="theme-night rounded-lg bg-canvas p-6 sm:p-8" role="status" aria-label="Loading your next step">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="mt-5 h-8 w-3/4 max-w-md" />
+        <Skeleton className="mt-3 h-4 w-2/3 max-w-sm" />
+        <Skeleton className="mt-7 h-11 w-44 rounded-sm" />
+      </div>
+    );
+  }
+
+  return (
+    <section
+      aria-label="Next step"
+      className="theme-night route-enter relative overflow-hidden rounded-lg bg-canvas p-6 text-fg sm:p-8 lg:p-10"
+    >
+      <div className="relative grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <div className="max-w-xl space-y-3">
+          <p className="flex items-center gap-2 font-mono text-meta uppercase tracking-[0.08em] text-signal-text">
+            <span className={cn('size-1.5 rounded-full bg-signal', step.pending && 'animate-pulse motion-reduce:animate-none')} aria-hidden="true" />
+            {step.eyebrow}
+          </p>
+          <h2 className="font-display text-display-md text-fg">{step.title}</h2>
+          <p className="text-body-lg text-fg-secondary">{step.body}</p>
+        </div>
+        <div>
+          {step.action.to ? (
+            <ButtonLink to={step.action.to} variant="signal" size="lg" trailingIcon={<ArrowRight />}>
+              {step.action.label}
+            </ButtonLink>
+          ) : (
+            <Button variant="signal" size="lg" onClick={step.action.onClick} loading={step.action.loading} loadingLabel="Creating…" trailingIcon={<ArrowRight />}>
+              {step.action.label}
+            </Button>
+          )}
+        </div>
+      </div>
+      {step.pending && <div className="activity-bar absolute inset-x-0 bottom-0 h-0.5 bg-edge" aria-hidden="true" />}
+    </section>
+  );
+};
+
+const actionLabel: Record<string, string> = {
+  in_progress: 'Resume',
+  ready: 'Open',
+  completed: 'Results',
+};
+
+const InterviewRow: React.FC<{ interview: Interview }> = ({ interview }) => {
+  const meta = interviewStatusMeta[interview.status];
+  const to = interview.status === 'completed' ? `/candidate/interviews/${interview.id}/evaluation` : `/candidate/interviews/${interview.id}`;
+  return (
+    <li>
+      <Link to={to} className="group -mx-3 flex items-center gap-4 rounded-sm px-3 py-3.5 transition-colors duration-quick hover:bg-surface">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-title-sm text-fg">{interviewTitle(interview)}</p>
+          <p className="mt-0.5 font-mono text-meta text-fg-muted">
+            {interview.mode.toUpperCase()} · {formatRelative(interview.scheduled_at)}
+          </p>
+        </div>
+        <StatusDot meta={meta} className="hidden sm:inline-flex" />
+        <span className="inline-flex items-center gap-1 text-body-sm text-fg-secondary group-hover:text-fg">
+          <span className="sm:hidden">
+            <StatusDot meta={meta} />
+          </span>
+          <span className="hidden sm:inline">{actionLabel[interview.status] ?? 'View'}</span>
+          <ArrowUpRight className="size-4 transition-transform duration-quick ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+        </span>
+      </Link>
+    </li>
+  );
+};
+
+const ChecklistItem: React.FC<{ done: boolean; title: string; detail: string; to: string; loading?: boolean }> = ({
+  done,
+  title,
+  detail,
+  to,
+  loading,
+}) => (
+  <li>
+    <Link to={to} className="group -mx-3 flex items-center gap-3 rounded-sm px-3 py-3 transition-colors duration-quick hover:bg-surface">
+      <span
+        className={cn(
+          'grid size-6 shrink-0 place-items-center rounded-full transition-colors duration-quick',
+          done ? 'bg-signal text-signal-fg' : 'text-fg-muted shadow-[inset_0_0_0_1.5px_rgb(var(--c-edge-strong))]'
+        )}
+      >
+        {done ? <Check className="size-3.5" strokeWidth={3} aria-hidden="true" /> : <Circle className="size-0" aria-hidden="true" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-title-sm text-fg">
+          {title}
+          <span className="sr-only">{done ? ' — done' : ' — to do'}</span>
+        </span>
+        {loading ? <Skeleton className="mt-1.5 h-3 w-24" /> : <span className="block truncate text-body-sm text-fg-muted">{detail}</span>}
+      </span>
+      <ArrowRight className="size-4 text-fg-muted opacity-0 transition-opacity duration-quick group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true" />
+    </Link>
+  </li>
+);

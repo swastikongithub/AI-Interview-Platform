@@ -2,10 +2,240 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   Design tokens
+   Colors are RGB channel triplets so Tailwind opacity modifiers work.
+   `.theme-night` re-declares the same names for dark, focused surfaces.
+   ========================================================================== */
+
 @layer base {
+  :root {
+    --c-canvas: 243 244 246;
+    --c-surface: 255 255 255;
+    --c-surface-sunken: 236 238 241;
+    --c-surface-hover: 247 248 250;
+
+    --c-fg: 12 14 19;
+    --c-fg-secondary: 55 60 71;
+    --c-fg-muted: 99 105 118;
+    --c-fg-inverse: 255 255 255;
+
+    --c-edge: 225 228 234;
+    --c-edge-strong: 196 201 211;
+
+    --c-signal: 200 240 90;
+    --c-signal-fg: 12 14 19;
+    --c-signal-text: 77 110 10;
+    --c-signal-soft: 238 249 206;
+
+    --c-positive: 20 112 54;
+    --c-positive-soft: 220 245 228;
+    --c-caution: 164 72 8;
+    --c-caution-soft: 254 240 220;
+    --c-negative: 185 28 28;
+    --c-negative-soft: 254 226 226;
+    --c-info: 29 78 216;
+    --c-info-soft: 224 233 255;
+
+    --c-focus: 37 99 235;
+    --c-shadow: 12 14 19;
+
+    /* Motion — values from the Animate skill. Never invent new curves. */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+    --rail-width: 16.5rem;
+
+    color-scheme: light;
+  }
+
+  .theme-night {
+    --c-canvas: 11 13 18;
+    --c-surface: 20 23 30;
+    --c-surface-sunken: 15 17 23;
+    --c-surface-hover: 28 32 41;
+
+    --c-fg: 238 240 244;
+    --c-fg-secondary: 186 191 201;
+    --c-fg-muted: 142 148 160;
+    --c-fg-inverse: 12 14 19;
+
+    --c-edge: 38 42 52;
+    --c-edge-strong: 62 68 82;
+
+    --c-signal-text: 200 240 90;
+    --c-signal-soft: 38 50 18;
+
+    --c-positive: 74 222 128;
+    --c-positive-soft: 16 46 29;
+    --c-caution: 251 191 36;
+    --c-caution-soft: 54 40 10;
+    --c-negative: 248 113 113;
+    --c-negative-soft: 58 20 22;
+    --c-info: 129 162 255;
+    --c-info-soft: 24 34 68;
+
+    --c-focus: 200 240 90;
+    --c-shadow: 0 0 0;
+
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    background-color: theme('colors.paper.DEFAULT');
-    color: theme('colors.ink.DEFAULT');
-    @apply font-sans antialiased;
+    @apply bg-canvas font-sans text-body text-fg antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  ::selection {
+    background: rgb(var(--c-signal) / 0.6);
+    color: rgb(var(--c-signal-fg));
+  }
+
+  /* One focus language everywhere: a 2px ring offset from the element. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-focus));
+    outline-offset: 2px;
+  }
+
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+/* ==========================================================================
+   Motion primitives (CSS — cheapest tool that works)
+   ========================================================================== */
+
+@layer utilities {
+  /* Pressable feedback: 160ms ease-out, scale never below 0.97. */
+  .pressable {
+    transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out);
+  }
+  .pressable:active:not(:disabled):not([aria-disabled='true']) {
+    transform: scale(0.97);
+  }
+
+  /* Route entrance — preventing a jarring change between pages. Navigation
+     happens tens of times a day, so it stays short and nearly imperceptible. */
+  .route-enter {
+    animation: route-enter 220ms var(--ease-out) both;
+  }
+
+  /* Staggered group entrance for occasionally-seen groups. Decorative only:
+     children stay interactive while it plays. */
+  .stagger > * {
+    animation: rise 320ms var(--ease-out) both;
+  }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(n + 7) { animation-delay: 240ms; }
+
+  /* Loading placeholder: constant motion, so linear. */
+  .skeleton {
+    background-color: rgb(var(--c-surface-sunken));
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(var(--c-surface) / 0.7) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  /* Indeterminate activity bar for pending AI work. */
+  .activity-bar {
+    position: relative;
+    overflow: hidden;
+  }
+  .activity-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: rgb(var(--c-signal));
+    animation: activity 1.6s var(--ease-in-out) infinite;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes activity {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Reduced motion: fewer and gentler, not zero. Keep opacity, drop movement. */
+@media (prefers-reduced-motion: reduce) {
+  .pressable:active:not(:disabled):not([aria-disabled='true']) {
+    transform: none;
+  }
+  .route-enter,
+  .stagger > * {
+    animation-name: fade;
+    animation-duration: 160ms;
+    animation-delay: 0ms !important;
+  }
+  .skeleton {
+    animation: none;
+  }
+  .activity-bar::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
   }
 }

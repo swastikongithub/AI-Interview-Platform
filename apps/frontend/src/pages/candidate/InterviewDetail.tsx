@@ -1,166 +1,246 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, Play } from 'lucide-react';
 import { apiService } from '../../services/api';
-import { PageTransition } from '../../motion/PageTransition';
-import { Reveal } from '../../motion/Reveal';
-import { MaskedTextReveal } from '../../motion/MaskedTextReveal';
-import { Badge } from '../../components/common/Badge';
-import { ArrowLeft, Play, AlertCircle } from 'lucide-react';
-import { Interview } from '../../types';
+import {
+  interviewTitle,
+  pickActiveSession,
+  queryKeys,
+  useInterview,
+  useInterviewSessions,
+  useQuestions,
+} from '../../lib/queries';
+import { describeError, formatDateTime, shortId, titleCase } from '../../lib/format';
+import { interviewStatusMeta } from '../../lib/status';
+import { Button, ButtonLink } from '../../components/ui/Button';
+import { KeyValue, PageHeader, Section } from '../../components/ui/Layout';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ErrorState, Skeleton, StateBlock } from '../../components/ui/States';
+
+const steps = [
+  {
+    title: 'One question at a time',
+    body: 'Each question is shown on its own. Write a complete answer before moving on — you can’t return to a submitted answer.',
+  },
+  {
+    title: 'Saved on submit',
+    body: 'Every submitted answer is stored on the server immediately. Your unsent draft is kept on this device.',
+  },
+  {
+    title: 'Leave and resume',
+    body: 'Close the tab or lose connection and you’ll return to the next unanswered question.',
+  },
+  {
+    title: 'Finish explicitly',
+    body: 'After the last answer, finish the interview. That closes the session and queues it for evaluation.',
+  },
+];
 
 export const InterviewDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const interviewQuery = useInterview(id);
+  const interview = interviewQuery.data;
+  const questionsQuery = useQuestions(id);
+  const sessionsQuery = useInterviewSessions(id, interview?.status === 'in_progress' || interview?.status === 'completed');
 
-  const { data: interview, isLoading, error } = useQuery<Interview>({
-    queryKey: ['interview', id],
-    queryFn: () => apiService.getInterviewById(id!),
-    enabled: !!id,
-  });
-
-  const startSessionMutation = useMutation({
+  const start = useMutation({
     mutationFn: () => apiService.startInterviewSession(id!),
     onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.interview(id!) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.interviews });
       navigate(`/candidate/interviews/${id}/session/${session.id}`);
     },
   });
 
-  const handleStart = () => {
-    // If the backend handles idempotency/returns active session, it's safe to just call start
-    startSessionMutation.mutate();
-  };
-
-  const getStatusVariant = (status?: string) => {
-    switch (status) {
-      case 'completed': return 'success';
-      case 'in_progress': return 'warning';
-      case 'ready': return 'default';
-      default: return 'outline';
-    }
-  };
-
-  if (isLoading) {
+  if (interviewQuery.isPending) {
     return (
-      <PageTransition className="font-sans min-h-screen pb-32 pt-32 px-6 md:px-12 max-w-[1400px] mx-auto">
-        <span className="font-mono text-xs uppercase tracking-widest text-ink-muted animate-pulse">Initializing Interface...</span>
-      </PageTransition>
-    );
-  }
-
-  if (error || !interview) {
-    return (
-      <PageTransition className="font-sans min-h-screen pb-32 pt-32 px-6 md:px-12 max-w-[1400px] mx-auto">
-        <div className="p-8 border border-red-500/20 bg-red-500/5 flex items-center gap-4 text-red-500 font-mono text-sm">
-          <AlertCircle className="w-5 h-5" />
-          <span>Failed to load interview. It may not exist or you may not have access.</span>
+      <div className="space-y-6" role="status" aria-label="Loading interview">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-12 w-2/3 max-w-lg" />
+        <Skeleton className="h-5 w-1/2 max-w-md" />
+        <div className="grid grid-cols-1 gap-8 pt-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-48" />
         </div>
-      </PageTransition>
+      </div>
     );
   }
 
-  const isEligibleToStart = interview.status === 'ready' || interview.status === 'in_progress';
-  const hasCompleted = interview.status === 'completed';
+  if (interviewQuery.isError || !interview) {
+    const error = describeError(interviewQuery.error, 'The interview could not be loaded.');
+    return (
+      <ErrorState
+        size="page"
+        error={error.kind === 'not_found' ? { ...error, message: 'This interview doesn’t exist, or it isn’t yours.' } : error}
+        title={error.kind === 'not_found' ? 'Interview not found' : undefined}
+        onRetry={() => interviewQuery.refetch()}
+        retrying={interviewQuery.isFetching}
+      />
+    );
+  }
+
+  const meta = interviewStatusMeta[interview.status];
+  const questions = questionsQuery.data ?? [];
+  const categories = Array.from(new Set(questions.map((q) => q.category).filter(Boolean)));
+  const activeSession = pickActiveSession(sessionsQuery.data);
+  const openSession = sessionsQuery.data?.find((s) => s.status === 'in_progress');
 
   return (
-    <PageTransition className="font-sans min-h-screen pb-32">
-      <section className="relative px-6 md:px-12 pt-32 pb-16 max-w-[1400px] mx-auto border-b border-line">
-        <button 
-          onClick={() => navigate('/candidate/interviews')}
-          className="inline-flex items-center gap-2 font-mono text-[10px] tracking-widest uppercase text-ink-muted hover:text-ink transition-colors mb-12"
-        >
-          <ArrowLeft className="w-3 h-3" />
-          <span>Back to Directory</span>
-        </button>
-        
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <span className="font-mono text-xs text-ink-faint uppercase tracking-widest">
-              ID: {interview.id.split('-')[0]}
-            </span>
-            <Badge variant={getStatusVariant(interview.status)}>
-              {interview.status}
-            </Badge>
-          </div>
-          <h1 className="text-5xl md:text-7xl font-serif text-ink tracking-tight">
-            <MaskedTextReveal text={`${interview.type} Assessment`} delay={0.1} />
-          </h1>
-          <Reveal delay={0.3} className="max-w-2xl text-xl text-ink-muted font-sans font-light">
-            Scheduled for {new Date(interview.scheduled_at).toLocaleString()} • {interview.mode} mode
-          </Reveal>
+    <div>
+      <PageHeader
+        back={{ to: '/candidate/interviews', label: 'Interviews' }}
+        kicker={`Brief · #${shortId(interview.id)}`}
+        title={<h1>{interviewTitle(interview)}</h1>}
+        meta={
+          <>
+            <StatusBadge meta={meta} />
+            <span className="font-mono text-meta uppercase text-fg-muted">{interview.mode} mode</span>
+            <span className="text-body-sm text-fg-muted">Created {formatDateTime(interview.scheduled_at)}</span>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14">
+        <div className="space-y-12">
+          <Section title="What to expect" description="Read this once before you begin.">
+            <ol className="stagger grid grid-cols-1 gap-px overflow-hidden rounded-md bg-edge sm:grid-cols-2">
+              {steps.map((step, i) => (
+                <li key={step.title} className="flex gap-4 bg-surface p-5">
+                  <span className="font-mono text-meta text-fg-muted">0{i + 1}</span>
+                  <span className="space-y-1">
+                    <span className="block text-title-sm text-fg">{step.title}</span>
+                    <span className="block text-body-sm text-fg-secondary">{step.body}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Section>
+
+          <Section title="Scope">
+            {questionsQuery.isPending ? (
+              <Skeleton className="h-16" />
+            ) : questionsQuery.isError ? (
+              <ErrorState error={describeError(questionsQuery.error)} onRetry={() => questionsQuery.refetch()} />
+            ) : questions.length === 0 ? (
+              <StateBlock
+                kind="empty"
+                title="No questions attached"
+                description="This interview has no questions, so it can’t be started. Create a new practice interview instead."
+              />
+            ) : (
+              <dl className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+                <KeyValue label="Questions">
+                  <span className="font-display text-display-md">{questions.length}</span>
+                </KeyValue>
+                <KeyValue label="Topics" className="col-span-2">
+                  <span className="flex flex-wrap gap-1.5 whitespace-normal pt-1">
+                    {categories.length > 0
+                      ? categories.map((c) => (
+                          <span key={c} className="rounded-xs bg-surface-sunken px-2 py-0.5 text-body-sm text-fg-secondary">
+                            {c}
+                          </span>
+                        ))
+                      : 'General'}
+                  </span>
+                </KeyValue>
+              </dl>
+            )}
+          </Section>
         </div>
-      </section>
 
-      <section className="max-w-[1400px] mx-auto px-6 md:px-12 pt-16 grid grid-cols-1 md:grid-cols-12 gap-16">
-        <main className="md:col-span-8 space-y-16">
-          <Reveal delay={0.4} y={20} className="space-y-6">
-            <h2 className="text-2xl font-serif text-ink border-b border-line pb-4">Session Parameters</h2>
-            <div className="grid grid-cols-2 gap-8 pt-4">
-              <div className="space-y-2">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-faint">Evaluation Type</span>
-                <p className="font-sans text-ink capitalize">{interview.type}</p>
-              </div>
-              <div className="space-y-2">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-faint">Interface Mode</span>
-                <p className="font-sans text-ink capitalize">{interview.mode}</p>
-              </div>
-            </div>
-            <div className="pt-8 text-sm font-sans text-ink-muted leading-relaxed max-w-prose space-y-4">
-              <p>
-                This assessment is designed to evaluate your technical and analytical reasoning. 
-                Ensure you are in a quiet environment before proceeding. The session state is maintained securely on our servers.
-              </p>
-              {interview.status === 'in_progress' && (
-                <p className="text-accent font-medium">
-                  You have an active session. Resuming will return you to your exact position.
-                </p>
-              )}
-            </div>
-          </Reveal>
-        </main>
-        
-        <aside className="md:col-span-4 space-y-8">
-          <Reveal delay={0.5} y={20} className="p-8 border border-line bg-paper-raised space-y-8">
-            <h3 className="font-mono text-xs uppercase tracking-widest text-ink border-b border-line pb-4">Action Required</h3>
-            
-            {isEligibleToStart && (
-              <div className="space-y-4">
-                <button
-                  onClick={handleStart}
-                  disabled={startSessionMutation.isPending}
-                  className="w-full inline-flex items-center justify-center gap-3 px-6 py-4 bg-ink text-paper hover:bg-ink-muted transition-colors font-mono text-xs uppercase tracking-widest disabled:opacity-50"
+        <aside className="lg:sticky lg:top-10 lg:self-start" aria-label="Interview actions">
+          <div className="theme-night rounded-lg bg-canvas p-6 text-fg">
+            {interview.status === 'ready' && (
+              <>
+                <p className="font-mono text-meta uppercase tracking-[0.08em] text-signal-text">Ready when you are</p>
+                <p className="mt-3 text-title-lg">Set aside about ten quiet minutes.</p>
+                <p className="mt-2 text-body-sm text-fg-secondary">Starting opens the session. It can’t be restarted once finished.</p>
+                <Button
+                  variant="signal"
+                  size="lg"
+                  className="mt-6 w-full"
+                  leadingIcon={<Play />}
+                  loading={start.isPending}
+                  loadingLabel="Opening session…"
+                  disabled={questions.length === 0 || questionsQuery.isPending}
+                  onClick={() => start.mutate()}
                 >
-                  {startSessionMutation.isPending ? 'Initializing...' : (
-                    <>
-                      <span>{interview.status === 'in_progress' ? 'Resume Session' : 'Start Session'}</span>
-                      <Play className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-                {startSessionMutation.isError && (
-                  <p className="text-xs text-red-500 font-mono">Failed to initialize session. Please try again.</p>
+                  Begin interview
+                </Button>
+                {start.isError && (
+                  <p role="alert" className="mt-3 text-body-sm text-negative">
+                    {describeError(start.error, 'The session could not be opened.').message}
+                  </p>
                 )}
-              </div>
+              </>
             )}
 
-            {hasCompleted && (
-              <div className="space-y-4">
-                <p className="text-sm font-sans text-ink-muted">This interview has concluded. The evaluation is available.</p>
-                <button
-                  onClick={() => navigate(`/candidate/interviews/${interview.id}/evaluation`)}
-                  className="w-full inline-flex items-center justify-center gap-3 px-6 py-4 border border-line hover:bg-paper-pressed transition-colors font-mono text-xs uppercase tracking-widest"
+            {interview.status === 'in_progress' && (
+              <>
+                <p className="font-mono text-meta uppercase tracking-[0.08em] text-signal-text">In progress</p>
+                <p className="mt-3 text-title-lg">Your answers so far are saved.</p>
+                <p className="mt-2 text-body-sm text-fg-secondary">You’ll continue at the first unanswered question.</p>
+                {sessionsQuery.isPending ? (
+                  <Skeleton className="mt-6 h-12 w-full rounded-sm" />
+                ) : sessionsQuery.isError ? (
+                  <ErrorState error={describeError(sessionsQuery.error)} onRetry={() => sessionsQuery.refetch()} />
+                ) : openSession ? (
+                  <ButtonLink
+                    to={`/candidate/interviews/${interview.id}/session/${openSession.id}`}
+                    variant="signal"
+                    size="lg"
+                    className="mt-6 w-full"
+                    trailingIcon={<ArrowRight />}
+                  >
+                    Resume interview
+                  </ButtonLink>
+                ) : (
+                  <p role="alert" className="mt-6 text-body-sm text-negative">
+                    No open session was found for this interview. It may have been closed on another device.
+                  </p>
+                )}
+              </>
+            )}
+
+            {interview.status === 'completed' && (
+              <>
+                <p className="font-mono text-meta uppercase tracking-[0.08em] text-signal-text">Finished</p>
+                <p className="mt-3 text-title-lg">Your interview is complete.</p>
+                <p className="mt-2 text-body-sm text-fg-secondary">
+                  {activeSession?.completed_at ? `Submitted ${formatDateTime(activeSession.completed_at)}. ` : ''}
+                  Results appear once an evaluation is released.
+                </p>
+                <ButtonLink
+                  to={`/candidate/interviews/${interview.id}/evaluation`}
+                  variant="signal"
+                  size="lg"
+                  className="mt-6 w-full"
+                  trailingIcon={<ArrowRight />}
                 >
-                  View Evaluation
-                </button>
-              </div>
+                  View results
+                </ButtonLink>
+              </>
             )}
 
-            {!isEligibleToStart && !hasCompleted && (
-              <p className="text-sm font-sans text-ink-muted italic">This assessment is currently {interview.status}. Action is not permitted.</p>
+            {(interview.status === 'draft' || interview.status === 'cancelled' || interview.status === 'expired') && (
+              <>
+                <p className="font-mono text-meta uppercase tracking-[0.08em] text-fg-muted">{meta.label}</p>
+                <p className="mt-3 text-title-lg">
+                  {interview.status === 'draft' ? 'Not open yet.' : 'This interview is closed.'}
+                </p>
+                <p className="mt-2 text-body-sm text-fg-secondary">
+                  {interview.status === 'draft'
+                    ? 'It becomes available once it’s set up. Check back later.'
+                    : `It was ${titleCase(interview.status).toLowerCase()} and can no longer be taken.`}
+                </p>
+              </>
             )}
-          </Reveal>
+          </div>
         </aside>
-      </section>
-    </PageTransition>
+      </div>
+    </div>
   );
 };

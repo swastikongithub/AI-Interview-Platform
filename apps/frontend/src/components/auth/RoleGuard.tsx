@@ -1,96 +1,163 @@
-import React, { ReactNode } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import React, { ReactNode, createContext, useContext, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
 import { DEMO_ACCOUNTS_ENABLED } from '../../config';
-import { ShieldAlert, RefreshCw, AlertTriangle } from 'lucide-react';
+import { roleHome, roleLabel } from '../../lib/status';
+import { Button, ButtonLink } from '../ui/Button';
+import { StateBlock } from '../ui/States';
+import { BrandMark } from '../shell/BrandMark';
 
 interface RoleGuardProps {
   allowedRoles: UserRole[];
   children: ReactNode;
 }
 
+/**
+ * Client-side route gate. This is UX only: identity comes exclusively from
+ * the backend's /auth/me response and every API endpoint re-authorizes.
+ */
 export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) => {
-  const { user, status, role, demoSwitchRole } = useAuth();
+  const { user, status, role } = useAuth();
+  const location = useLocation();
 
   if (status === 'initializing') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-paper">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-8 h-8 text-accent animate-spin" />
-          <p className="text-ink-muted text-sm font-medium">Verifying access & permissions...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === 'unauthenticated' || !user || !role) {
-    return <Navigate to="/login" replace />;
+    return <GuardFrame><VerifyingAccess /></GuardFrame>;
   }
 
   if (status === 'error') {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center p-6">
-        <div className="bg-paper-raised border border-line max-w-md w-full p-8 text-center space-y-6">
-          <div className="w-16 h-16 bg-paper-raised border border-line rounded-2xl flex items-center justify-center mx-auto text-amber-400 shadow-sm">
-            <AlertTriangle className="w-8 h-8" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold text-white">Authentication Service Error</h3>
-            <p className="text-sm text-slate-400">
-              We encountered a network or server issue verifying your session.
-            </p>
-          </div>
-          <Link
-            to="/login"
-            className="inline-block w-full py-3 px-4 rounded-xl bg-accent hover:bg-accent-hover text-white font-bold text-sm transition-all"
-          >
-            Go to Login
-          </Link>
-        </div>
-      </div>
+      <GuardFrame>
+        <AuthServiceError />
+      </GuardFrame>
     );
+  }
+
+  if (status === 'unauthenticated' || !user || !role) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (!allowedRoles.includes(role)) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center p-6">
-        <div className="bg-paper-raised border border-line max-w-md w-full p-8 text-center space-y-6">
-          <div className="w-16 h-16 bg-paper-raised border border-line rounded-2xl flex items-center justify-center mx-auto text-critical shadow-sm">
-            <ShieldAlert className="w-8 h-8" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold text-white">Access Restricted (403 Forbidden)</h3>
-            <p className="text-sm text-slate-400">
-              This page requires one of the following roles:{' '}
-              <span className="font-semibold text-accent">
-                {allowedRoles.map((r) => r.toUpperCase()).join(', ')}
-              </span>
-              . Your current active role is{' '}
-              <span className="font-semibold text-white">{role.toUpperCase()}</span>.
-            </p>
-          </div>
-
-          {DEMO_ACCOUNTS_ENABLED && (
-            <div className="pt-4 border-t border-line">
-              <p className="text-xs text-slate-400 mb-3">Quick Demo Account Switcher:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {allowedRoles.map((targetRole) => (
-                  <button
-                    key={targetRole}
-                    onClick={() => demoSwitchRole(targetRole)}
-                    className="px-4 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs transition-all shadow-md hover:scale-105"
-                  >
-                    Switch to {targetRole}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <GuardFrame>
+        <Forbidden role={role} allowedRoles={allowedRoles} />
+      </GuardFrame>
     );
   }
 
   return <>{children}</>;
+};
+
+/** True when rendered inside the authenticated AppShell, which already provides a frame. */
+export const InsideShellContext = createContext(false);
+
+const GuardFrame: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const insideShell = useContext(InsideShellContext);
+  if (insideShell) return <div className="max-w-2xl">{children}</div>;
+  return (
+    <div className="flex min-h-dvh flex-col bg-canvas px-4 sm:px-8">
+      <div className="flex h-16 items-center">
+        <BrandMark className="size-7" />
+      </div>
+      <div className="mx-auto flex w-full max-w-2xl flex-1 items-center">{children}</div>
+    </div>
+  );
+};
+
+const VerifyingAccess: React.FC = () => (
+  <div role="status" aria-live="polite" className="w-full space-y-4">
+    <p className="font-mono text-meta uppercase tracking-[0.08em] text-fg-muted">Checking access</p>
+    <div className="activity-bar h-0.5 w-full max-w-sm rounded-full bg-edge" aria-hidden="true" />
+    <p className="text-body text-fg-secondary">Confirming your session and role with the server…</p>
+  </div>
+);
+
+const AuthServiceError: React.FC = () => {
+  const queryClient = useQueryClient();
+  const [retrying, setRetrying] = useState(false);
+  return (
+    <StateBlock
+      kind="network"
+      size="page"
+      title="We couldn’t confirm your session"
+      description="The authentication service didn’t respond as expected. Your data is safe — nothing was changed. Retry, or sign in again."
+      actions={
+        <>
+          <Button
+            leadingIcon={<RefreshCw />}
+            loading={retrying}
+            onClick={async () => {
+              setRetrying(true);
+              await queryClient.invalidateQueries({ queryKey: ['authMe'] });
+              setRetrying(false);
+            }}
+          >
+            Retry
+          </Button>
+          <ButtonLink to="/login" variant="secondary">
+            Go to sign in
+          </ButtonLink>
+        </>
+      }
+    />
+  );
+};
+
+const Forbidden: React.FC<{ role: UserRole; allowedRoles: UserRole[] }> = ({ role, allowedRoles }) => {
+  const { demoSwitchRole } = useAuth();
+  const [switching, setSwitching] = useState<UserRole | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="w-full">
+      <StateBlock
+        kind="forbidden"
+        size="page"
+        title="This area belongs to another role"
+        description={
+          <>
+            <p>
+              This page is available to{' '}
+              <strong className="font-medium text-fg">{allowedRoles.map((r) => roleLabel[r]).join(' or ')}</strong> accounts.
+              You’re signed in as a <strong className="font-medium text-fg">{roleLabel[role]}</strong>.
+            </p>
+            {error && (
+              <p role="alert" className="mt-3 text-body-sm text-negative">
+                {error}
+              </p>
+            )}
+          </>
+        }
+        actions={
+          <>
+            <ButtonLink to={roleHome[role]}>Go to your {roleLabel[role].toLowerCase()} workspace</ButtonLink>
+            {DEMO_ACCOUNTS_ENABLED &&
+              allowedRoles.map((target) => (
+                <Button
+                  key={target}
+                  variant="secondary"
+                  loading={switching === target}
+                  disabled={switching !== null}
+                  onClick={async () => {
+                    setSwitching(target);
+                    setError(null);
+                    try {
+                      await demoSwitchRole(target);
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Could not switch demo account.');
+                    } finally {
+                      setSwitching(null);
+                    }
+                  }}
+                >
+                  Use demo {roleLabel[target].toLowerCase()}
+                </Button>
+              ))}
+          </>
+        }
+      />
+    </div>
+  );
 };

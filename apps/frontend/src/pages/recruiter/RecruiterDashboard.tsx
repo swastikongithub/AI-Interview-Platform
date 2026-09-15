@@ -1,134 +1,253 @@
-import React from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { MaskedTextReveal } from '../../motion/MaskedTextReveal';
-import { Reveal } from '../../motion/Reveal';
-import {
-  Briefcase,
-  Users,
-  Plus,
-  FileText,
-  Building2,
-  Sparkles,
-} from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
+import { ArrowRight, Search, UserX } from 'lucide-react';
+import { apiService } from '../../services/api';
+import { interviewTitle, queryKeys, useInterviews } from '../../lib/queries';
+import { describeError, formatDate, shortId } from '../../lib/format';
+import { interviewStatusMeta } from '../../lib/status';
+import type { CandidateProfile, Interview, InterviewStatus } from '../../types';
+import { Button } from '../../components/ui/Button';
+import { PageHeader } from '../../components/ui/Layout';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ErrorState, ListSkeleton, StateBlock } from '../../components/ui/States';
+import { cn } from '../../utils/cn';
+
+type Stage = 'all' | InterviewStatus | 'needs_interviewer';
+
+const flow: InterviewStatus[] = ['draft', 'ready', 'in_progress', 'completed'];
+const closed: InterviewStatus[] = ['cancelled', 'expired'];
+const PAGE = 20;
 
 export const RecruiterDashboard: React.FC = () => {
-  const { user, profile } = useAuth();
+  const query = useInterviews();
+  const [stage, setStage] = useState<Stage>('all');
+  const [search, setSearch] = useState('');
+  const [limit, setLimit] = useState(PAGE);
+
+  const interviews = query.data ?? [];
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: interviews.length, needs_interviewer: 0 };
+    interviews.forEach((i) => {
+      c[i.status] = (c[i.status] ?? 0) + 1;
+      if (!i.interviewer_id && i.status === 'completed') c.needs_interviewer += 1;
+    });
+    return c;
+  }, [interviews]);
+
+  const staged = interviews.filter((i) =>
+    stage === 'all' ? true : stage === 'needs_interviewer' ? !i.interviewer_id && i.status === 'completed' : i.status === stage
+  );
+
+  // Resolve names only for candidates on the visible page, deduplicated.
+  const candidateIds = Array.from(new Set(staged.slice(0, limit).map((i) => i.candidate_id).filter(Boolean)));
+  const profileQueries = useQueries({
+    queries: candidateIds.map((cid) => ({
+      queryKey: queryKeys.profile(cid),
+      queryFn: async (): Promise<CandidateProfile | null> => {
+        try {
+          return await apiService.getProfileById(cid);
+        } catch {
+          return null;
+        }
+      },
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  const names = new Map<string, string>();
+  candidateIds.forEach((cid, idx) => {
+    const name = profileQueries[idx]?.data?.name;
+    if (name) names.set(cid, name);
+  });
+
+  const term = search.trim().toLowerCase();
+  const visible = term
+    ? staged.filter((i) => i.id.startsWith(term) || i.candidate_id?.startsWith(term) || names.get(i.candidate_id)?.toLowerCase().includes(term))
+    : staged;
+
+  const selectStage = (s: Stage) => {
+    setStage(s);
+    setLimit(PAGE);
+  };
 
   return (
-    <div className="w-full space-y-16 lg:space-y-24">
-      {/* Editorial Header */}
-      <div className="flex flex-col lg:flex-row items-start gap-12 lg:gap-24 relative">
-        <div className="flex-1 space-y-8">
-          <div className="inline-flex items-center gap-2 border-b border-ink pb-2">
-            <Sparkles className="w-4 h-4 text-accent" />
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink">
-              Recruiter Portal
-            </span>
-          </div>
-          
-          <div className="space-y-6 max-w-2xl">
-            <MaskedTextReveal 
-              text="Recruiting Operations."
-              className="text-4xl md:text-6xl font-serif tracking-tight text-ink"
+    <div>
+      <PageHeader
+        kicker="Hiring"
+        title={<h1>Pipeline</h1>}
+        description="Every interview on the platform, by stage. Open one to review responses, assign an interviewer, or close it."
+      />
+
+      {/* Stage flow — doubles as the primary filter */}
+      <nav aria-label="Pipeline stages" className="scrollbar-none -mx-4 mb-8 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <ol className="flex min-w-max items-stretch gap-px overflow-hidden rounded-md bg-edge shadow-hairline">
+          <StageButton label="All" count={counts.all} active={stage === 'all'} onClick={() => selectStage('all')} loading={query.isPending} />
+          {flow.map((s) => (
+            <StageButton
+              key={s}
+              label={interviewStatusMeta[s].label}
+              count={counts[s] ?? 0}
+              active={stage === s}
+              onClick={() => selectStage(s)}
+              loading={query.isPending}
+              arrow
             />
-            <Reveal delay={0.2} y={20}>
-              <p className="text-lg text-ink-muted leading-relaxed font-sans">
-                Manage job requisitions and track applicant progression.
-              </p>
-            </Reveal>
-          </div>
-        </div>
+          ))}
+          {closed.map((s) => (
+            <StageButton
+              key={s}
+              label={interviewStatusMeta[s].label}
+              count={counts[s] ?? 0}
+              active={stage === s}
+              onClick={() => selectStage(s)}
+              loading={query.isPending}
+              muted
+            />
+          ))}
+        </ol>
+      </nav>
 
-        {/* Action Column */}
-        <Reveal delay={0.3} y={20} className="w-full lg:w-72 flex-shrink-0">
-          <div className="p-6 border border-line bg-paper-raised flex flex-col gap-6 relative group">
-            <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-ink-faint mb-2">Primary Action</p>
-              <h3 className="text-xl font-serif text-ink tracking-tight">New Requisition</h3>
-            </div>
-            <button
-              onClick={() => alert('Post New Job feature coming soon.')}
-              className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-ink text-paper font-sans text-xs font-semibold uppercase tracking-widest hover:bg-accent transition-colors relative z-10"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Post Job</span>
-            </button>
-          </div>
-        </Reveal>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
+          <label htmlFor="pipeline-search" className="sr-only">
+            Search by candidate name or ID
+          </label>
+          <input
+            id="pipeline-search"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Candidate name or ID"
+            className="h-10 w-full rounded-sm bg-surface pl-9 pr-3 text-body text-fg shadow-hairline placeholder:text-fg-muted focus:shadow-[0_0_0_2px_rgb(var(--c-focus))] focus:outline-none focus-visible:outline-none"
+          />
+        </div>
+        <button
+          type="button"
+          aria-pressed={stage === 'needs_interviewer'}
+          onClick={() => selectStage(stage === 'needs_interviewer' ? 'all' : 'needs_interviewer')}
+          className={cn(
+            'pressable inline-flex h-10 items-center gap-2 rounded-sm px-3 text-body-sm',
+            stage === 'needs_interviewer' ? 'bg-fg text-fg-inverse' : 'bg-surface text-fg-secondary shadow-hairline hover:text-fg'
+          )}
+        >
+          <UserX className="size-4" aria-hidden="true" />
+          Finished, no interviewer
+          <span className="font-mono text-micro tabular-nums opacity-70">{counts.needs_interviewer}</span>
+        </button>
       </div>
 
-      {/* Stats Matrix */}
-      <div className="grid grid-cols-1 md:grid-cols-3 border-y border-line divide-y md:divide-y-0 md:divide-x divide-line">
-        <Reveal delay={0.4} className="p-8 md:p-12 flex flex-col gap-6">
-          <div className="flex items-center gap-3 text-ink-muted">
-            <Building2 className="w-4 h-4" />
-            <span className="font-mono text-[10px] uppercase tracking-widest">Active Companies</span>
-          </div>
-          <p className="text-5xl font-serif text-ink tracking-tight">0</p>
-        </Reveal>
-
-        <Reveal delay={0.5} className="p-8 md:p-12 flex flex-col gap-6">
-          <div className="flex items-center gap-3 text-ink-muted">
-            <Briefcase className="w-4 h-4" />
-            <span className="font-mono text-[10px] uppercase tracking-widest">Open Requisitions</span>
-          </div>
-          <p className="text-5xl font-serif text-ink tracking-tight">0</p>
-        </Reveal>
-
-        <Reveal delay={0.6} className="p-8 md:p-12 flex flex-col gap-6">
-          <div className="flex items-center gap-3 text-ink-muted">
-            <Users className="w-4 h-4" />
-            <span className="font-mono text-[10px] uppercase tracking-widest">Active Applicants</span>
-          </div>
-          <p className="text-5xl font-serif text-ink tracking-tight">0</p>
-        </Reveal>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 lg:gap-24">
-        <div className="space-y-8">
-          <Reveal delay={0.5} className="flex items-center justify-between border-b border-line pb-4">
-            <h2 className="text-2xl font-serif text-ink tracking-tight">Active Postings</h2>
-          </Reveal>
-
-          <Reveal delay={0.6}>
-            <div className="border border-line bg-paper-raised p-12 md:p-24 flex flex-col items-center text-center gap-6">
-              <div className="w-16 h-16 rounded-full border border-line flex items-center justify-center text-ink-faint">
-                <FileText className="w-6 h-6" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-serif text-ink tracking-tight">No active requisitions</h3>
-                <p className="text-sm font-sans text-ink-muted max-w-sm mx-auto leading-relaxed">
-                  You have not published any job postings. Create a requisition to begin tracking applicants.
-                </p>
-              </div>
-            </div>
-          </Reveal>
+      {query.isPending ? (
+        <ListSkeleton rows={6} label="Loading pipeline" className="border-t border-edge" />
+      ) : query.isError ? (
+        <ErrorState error={describeError(query.error)} onRetry={() => query.refetch()} retrying={query.isFetching} />
+      ) : visible.length === 0 ? (
+        <div className="border-t border-edge">
+          <StateBlock
+            kind="empty"
+            title={interviews.length === 0 ? 'No interviews on the platform yet' : 'No interviews match'}
+            description={
+              interviews.length === 0
+                ? 'Interviews appear here as soon as candidates create them.'
+                : 'Try another stage or clear the search.'
+            }
+          />
         </div>
-
-        {/* Sidebar Dossier */}
-        <div className="space-y-8">
-          <Reveal delay={0.7} className="border-b border-line pb-4">
-            <h2 className="text-sm font-sans text-ink tracking-wide font-semibold">Recruiter Dossier</h2>
-          </Reveal>
-          
-          <Reveal delay={0.8} className="space-y-6 font-mono text-[11px] text-ink-muted">
-            <div className="flex flex-col gap-1 border-b border-line pb-4">
-              <span className="uppercase tracking-widest text-ink-faint">Identity</span>
-              <span className="text-ink">{profile?.name || user?.email || 'Unknown User'}</span>
-            </div>
-            <div className="flex flex-col gap-1 border-b border-line pb-4">
-              <span className="uppercase tracking-widest text-ink-faint">System Role</span>
-              <span className="text-ink">Recruiter</span>
-            </div>
-            <div className="flex flex-col gap-1 border-b border-line pb-4">
-              <span className="uppercase tracking-widest text-ink-faint">Pipeline Status</span>
-              <span className="text-ink">Idle</span>
-            </div>
-          </Reveal>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="overflow-hidden rounded-md bg-surface shadow-hairline">
+            <table className="w-full border-collapse text-left">
+              <caption className="sr-only">Interviews in the {stage === 'all' ? 'whole pipeline' : 'selected stage'}</caption>
+              <thead className="hidden border-b border-edge text-meta text-fg-muted md:table-header-group">
+                <tr>
+                  <th scope="col" className="px-5 py-2.5 font-normal">Candidate</th>
+                  <th scope="col" className="px-3 py-2.5 font-normal">Interview</th>
+                  <th scope="col" className="px-3 py-2.5 font-normal">Stage</th>
+                  <th scope="col" className="px-3 py-2.5 font-normal">Interviewer</th>
+                  <th scope="col" className="px-3 py-2.5 font-normal">Created</th>
+                  <th scope="col" className="px-5 py-2.5 font-normal"><span className="sr-only">Open</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-edge">
+                {visible.slice(0, limit).map((i) => (
+                  <PipelineRow key={i.id} interview={i} name={names.get(i.candidate_id)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <p className="font-mono text-meta text-fg-muted">
+              Showing {Math.min(limit, visible.length)} of {visible.length}
+            </p>
+            {visible.length > limit && (
+              <Button variant="secondary" size="sm" onClick={() => setLimit((l) => l + PAGE)}>
+                Show more
+              </Button>
+            )}
+          </div>
+        </>
+      )}
     </div>
+  );
+};
+
+const StageButton: React.FC<{
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  loading?: boolean;
+  arrow?: boolean;
+  muted?: boolean;
+}> = ({ label, count, active, onClick, loading, muted }) => (
+  <li className="flex flex-1">
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'flex w-full min-w-[7.5rem] flex-col items-start gap-1 px-4 py-3 text-left transition-colors duration-quick ease-out',
+        active ? 'bg-fg text-fg-inverse' : muted ? 'bg-surface-sunken text-fg-muted hover:bg-surface' : 'bg-surface text-fg hover:bg-surface-hover'
+      )}
+    >
+      <span className={cn('text-meta', active ? 'text-fg-inverse/70' : 'text-fg-muted')}>{label}</span>
+      <span className="font-display text-title-lg tabular-nums">{loading ? '–' : count}</span>
+    </button>
+  </li>
+);
+
+const PipelineRow: React.FC<{ interview: Interview; name?: string }> = ({ interview, name }) => {
+  const to = `/recruiter/interviews/${interview.id}`;
+  return (
+    <tr className="group relative grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 px-5 py-3.5 transition-colors duration-quick hover:bg-surface-hover md:table-row md:p-0">
+      <td className="min-w-0 md:px-5 md:py-3.5">
+        {/* The whole row is clickable through this stretched link. */}
+        <Link to={to} className="block truncate text-title-sm text-fg after:absolute after:inset-0 after:content-['']">
+          {name ?? 'Unnamed candidate'}
+        </Link>
+        <span className="block font-mono text-meta text-fg-muted">#{shortId(interview.candidate_id)}</span>
+      </td>
+      <td className="col-start-1 text-body-sm text-fg-secondary md:px-3 md:py-3.5">
+        {interviewTitle(interview)}
+        <span className="ml-2 font-mono text-micro uppercase text-fg-muted">{interview.mode}</span>
+      </td>
+      <td className="col-start-2 row-start-1 md:px-3 md:py-3.5">
+        <StatusBadge meta={interviewStatusMeta[interview.status]} />
+      </td>
+      <td className="col-start-1 text-body-sm md:px-3 md:py-3.5">
+        {interview.interviewer_id ? (
+          <span className="font-mono text-meta text-fg-secondary">
+            <span className="md:hidden">Interviewer </span>#{shortId(interview.interviewer_id)}
+          </span>
+        ) : (
+          <span className="text-fg-muted">Unassigned</span>
+        )}
+      </td>
+      <td className="hidden text-body-sm text-fg-secondary md:table-cell md:px-3 md:py-3.5">{formatDate(interview.scheduled_at)}</td>
+      <td className="hidden md:table-cell md:px-5 md:py-3.5">
+        <ArrowRight className="ml-auto size-4 text-fg-muted transition-transform duration-quick ease-out group-hover:translate-x-0.5 group-hover:text-fg" aria-hidden="true" />
+      </td>
+    </tr>
   );
 };

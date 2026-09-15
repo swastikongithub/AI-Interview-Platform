@@ -50,7 +50,7 @@ export const apiService = {
     return res.data;
   },
 
-  async getHealth(): Promise<any> {
+  async getHealth(): Promise<import('../types').HealthStatus> {
     const res = await api.get('/health');
     return res.data;
   },
@@ -122,6 +122,32 @@ export const apiService = {
 
   async startInterviewSession(id: string): Promise<import('../types').InterviewSession> {
     const res = await api.post(`/interviews/${id}/sessions`);
+    return res.data;
+  },
+
+  /** Sessions for an interview, newest first. Authorized server-side per role. */
+  async getInterviewSessions(id: string): Promise<import('../types').InterviewSession[]> {
+    const res = await api.get(`/interviews/${id}/sessions`);
+    return res.data;
+  },
+
+  // Recruiter / admin only (enforced by the backend).
+  async assignInterviewer(id: string, interviewerId: string): Promise<import('../types').Interview> {
+    const res = await api.patch(`/interviews/${id}/assign`, { interviewer_id: interviewerId });
+    return res.data;
+  },
+
+  async cancelInterview(id: string): Promise<import('../types').Interview> {
+    const res = await api.patch(`/interviews/${id}/cancel`);
+    return res.data;
+  },
+
+  // Interviewer (assigned) / admin only (enforced by the backend).
+  async updateEvaluation(
+    id: string,
+    payload: import('../types').EvaluationUpdate
+  ): Promise<import('../types').Evaluation> {
+    const res = await api.put(`/interviews/${id}/evaluation`, payload);
     return res.data;
   },
 

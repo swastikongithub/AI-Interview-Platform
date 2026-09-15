@@ -1,127 +1,82 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { Layout } from './components/layout/Layout';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { MotionConfig } from 'motion/react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { RoleGuard } from './components/auth/RoleGuard';
+import { AppShell } from './components/shell/AppShell';
+import { ToastProvider } from './components/ui/Toast';
+import { roleHome } from './lib/status';
+import type { UserRole } from './types';
+
 import { LoginPage } from './pages/auth/LoginPage';
 import { CandidateDashboard } from './pages/candidate/CandidateDashboard';
 import { ProfilePage } from './pages/candidate/ProfilePage';
-import { RecruiterDashboard } from './pages/recruiter/RecruiterDashboard';
-import { InterviewerDashboard } from './pages/interviewer/InterviewerDashboard';
-import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { ResumePage } from './pages/candidate/ResumePage';
+import { JobMatchesPage } from './pages/candidate/JobMatchesPage';
 import { InterviewsList } from './pages/candidate/InterviewsList';
 import { InterviewDetail } from './pages/candidate/InterviewDetail';
 import { InterviewSession } from './pages/candidate/InterviewSession';
 import { InterviewEvaluation } from './pages/candidate/InterviewEvaluation';
+import { RecruiterDashboard } from './pages/recruiter/RecruiterDashboard';
+import { RecruiterInterviewReview } from './pages/recruiter/RecruiterInterviewReview';
+import { InterviewerDashboard } from './pages/interviewer/InterviewerDashboard';
+import { EvaluationWorkspace } from './pages/interviewer/EvaluationWorkspace';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { NotFoundPage } from './pages/NotFoundPage';
 
-import { ComponentPlayground } from './pages/dev/ComponentPlayground';
-import { config } from './config';
+const ALL_ROLES: UserRole[] = ['candidate', 'recruiter', 'interviewer', 'admin'];
 
-import { ToastProvider } from './components/common/Toast';
+const guard = (roles: UserRole[], element: React.ReactNode) => (
+  <RoleGuard allowedRoles={roles}>{element}</RoleGuard>
+);
 
-export const App: React.FC = () => {
-  return (
+/** Sends "/" to the signed-in role's workspace (or to sign-in via the guard). */
+const HomeRedirect: React.FC = () => {
+  const { role } = useAuth();
+  return role ? <Navigate to={roleHome[role]} replace /> : null;
+};
+
+export const App: React.FC = () => (
+  <MotionConfig reducedMotion="user">
     <AuthProvider>
       <ToastProvider>
         <BrowserRouter>
-          <Layout>
-            <Routes>
-              {/* Component Playground (Dev Only) */}
-              {config.env === 'development' && (
-                <Route path="/dev/components" element={<ComponentPlayground />} />
-              )}
-
+          <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<Navigate to="/candidate/dashboard" replace />} />
 
-            {/* Candidate Routes */}
-            <Route
-              path="/candidate/dashboard"
-              element={
-                <RoleGuard allowedRoles={['candidate']}>
-                  <CandidateDashboard />
-                </RoleGuard>
-              }
-            />
-            <Route
-              path="/candidate/profile"
-              element={
-                <RoleGuard allowedRoles={['candidate']}>
-                  <ProfilePage />
-                </RoleGuard>
-              }
-            />
-            <Route
-              path="/candidate/interviews"
-              element={
-                <RoleGuard allowedRoles={['candidate']}>
-                  <InterviewsList />
-                </RoleGuard>
-              }
-            />
-            <Route
-              path="/candidate/interviews/:id"
-              element={
-                <RoleGuard allowedRoles={['candidate']}>
-                  <InterviewDetail />
-                </RoleGuard>
-              }
-            />
+            {/* Immersive, shell-less interview session */}
             <Route
               path="/candidate/interviews/:id/session/:sessionId"
-              element={
-                <RoleGuard allowedRoles={['candidate']}>
-                  <InterviewSession />
-                </RoleGuard>
-              }
-            />
-            <Route
-              path="/candidate/interviews/:id/evaluation"
-              element={
-                <RoleGuard allowedRoles={['candidate']}>
-                  <InterviewEvaluation />
-                </RoleGuard>
-              }
+              element={guard(['candidate'], <InterviewSession />)}
             />
 
-            {/* Recruiter Routes */}
-            <Route
-              path="/recruiter/dashboard"
-              element={
-                <RoleGuard allowedRoles={['recruiter']}>
-                  <RecruiterDashboard />
-                </RoleGuard>
-              }
-            />
+            {/* Authenticated application frame */}
+            <Route element={guard(ALL_ROLES, <AppShell />)}>
+              <Route path="/" element={<HomeRedirect />} />
 
-            {/* Interviewer Routes */}
-            <Route
-              path="/interviewer/dashboard"
-              element={
-                <RoleGuard allowedRoles={['interviewer']}>
-                  <InterviewerDashboard />
-                </RoleGuard>
-              }
-            />
+              <Route path="/candidate/dashboard" element={guard(['candidate'], <CandidateDashboard />)} />
+              <Route path="/candidate/profile" element={guard(['candidate'], <ProfilePage />)} />
+              <Route path="/candidate/resume" element={guard(['candidate'], <ResumePage />)} />
+              <Route path="/candidate/jobs" element={guard(['candidate'], <JobMatchesPage />)} />
+              <Route path="/candidate/interviews" element={guard(['candidate'], <InterviewsList />)} />
+              <Route path="/candidate/interviews/:id" element={guard(['candidate'], <InterviewDetail />)} />
+              <Route path="/candidate/interviews/:id/evaluation" element={guard(['candidate'], <InterviewEvaluation />)} />
 
-            {/* Admin Routes */}
-            <Route
-              path="/admin/dashboard"
-              element={
-                <RoleGuard allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </RoleGuard>
-              }
-            />
+              <Route path="/recruiter/dashboard" element={guard(['recruiter'], <RecruiterDashboard />)} />
+              <Route path="/recruiter/interviews/:id" element={guard(['recruiter'], <RecruiterInterviewReview />)} />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+              <Route path="/interviewer/dashboard" element={guard(['interviewer'], <InterviewerDashboard />)} />
+              <Route path="/interviewer/interviews/:id" element={guard(['interviewer'], <EvaluationWorkspace />)} />
+
+              <Route path="/admin/dashboard" element={guard(['admin'], <AdminDashboard />)} />
+
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
           </Routes>
-        </Layout>
-      </BrowserRouter>
+        </BrowserRouter>
       </ToastProvider>
     </AuthProvider>
-  );
-};
+  </MotionConfig>
+);
 
 export default App;

@@ -228,4 +228,66 @@ describe('Interviews MVP Domain Integration', () => {
       expect(assignRes.status).toBe(200);
     });
   });
+
+  describe('17-19. Session listing & assignment lifecycle', () => {
+    it('17. Owner, recruiter and assigned interviewer can list sessions; others get 404', async () => {
+      const created = await request(app).post('/api/v1/interviews').set('Authorization', candidateToken).send({ type: 'practice', mode: 'text' });
+      const intId = created.body.id;
+      const started = await request(app).post(`/api/v1/interviews/${intId}/sessions`).set('Authorization', candidateToken);
+      expect(started.status).toBe(201);
+
+      const own = await request(app).get(`/api/v1/interviews/${intId}/sessions`).set('Authorization', candidateToken);
+      expect(own.status).toBe(200);
+      expect(own.body.map((s: any) => s.id)).toContain(started.body.id);
+
+      const other = await request(app).get(`/api/v1/interviews/${intId}/sessions`).set('Authorization', otherCandidateToken);
+      expect(other.status).toBe(404);
+
+      const unassigned = await request(app).get(`/api/v1/interviews/${intId}/sessions`).set('Authorization', interviewerToken);
+      expect(unassigned.status).toBe(404);
+
+      const recruiter = await request(app).get(`/api/v1/interviews/${intId}/sessions`).set('Authorization', recruiterToken);
+      expect(recruiter.status).toBe(200);
+
+      await request(app).patch(`/api/v1/interviews/${intId}/assign`).set('Authorization', recruiterToken).send({ interviewer_id: '33333333-3333-4333-8333-333333333333' });
+      const assigned = await request(app).get(`/api/v1/interviews/${intId}/sessions`).set('Authorization', interviewerToken);
+      expect(assigned.status).toBe(200);
+    });
+
+    it('18. Unauthenticated session listing is rejected', async () => {
+      const res = await request(app).get('/api/v1/interviews/00000000-0000-4000-8000-000000000000/sessions');
+      expect(res.status).toBe(401);
+    });
+
+    it('19. Assigning an interviewer does not rewind an in-progress interview', async () => {
+      const created = await request(app).post('/api/v1/interviews').set('Authorization', candidateToken).send({ type: 'practice', mode: 'text' });
+      const intId = created.body.id;
+      await request(app).post(`/api/v1/interviews/${intId}/sessions`).set('Authorization', candidateToken);
+
+      const assignRes = await request(app).patch(`/api/v1/interviews/${intId}/assign`).set('Authorization', recruiterToken).send({ interviewer_id: '33333333-3333-4333-8333-333333333333' });
+      expect(assignRes.status).toBe(200);
+      expect(assignRes.body.status).toBe('in_progress');
+      expect(assignRes.body.interviewer_id).toBe('33333333-3333-4333-8333-333333333333');
+    });
+
+    it('20. Assigned interviewer can persist overall score and summary (migration 0005)', async () => {
+      const created = await request(app).post('/api/v1/interviews').set('Authorization', candidateToken).send({ type: 'practice', mode: 'text' });
+      const intId = created.body.id;
+      await request(app).patch(`/api/v1/interviews/${intId}/assign`).set('Authorization', recruiterToken).send({ interviewer_id: '33333333-3333-4333-8333-333333333333' });
+
+      const saved = await request(app)
+        .put(`/api/v1/interviews/${intId}/evaluation`)
+        .set('Authorization', interviewerToken)
+        .send({ status: 'pending', technical_score: 70, communication_score: 80, coding_score: 60, confidence_score: 75, overall_score: 72, summary: 'Solid reasoning.' });
+      expect(saved.status).toBe(200);
+      expect(saved.body.overall_score).toBe(72);
+      expect(saved.body.summary).toBe('Solid reasoning.');
+
+      const outOfRange = await request(app)
+        .put(`/api/v1/interviews/${intId}/evaluation`)
+        .set('Authorization', interviewerToken)
+        .send({ overall_score: 140 });
+      expect(outOfRange.status).toBe(400);
+    });
+  });
 });
